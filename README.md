@@ -154,4 +154,9 @@ This sample is licensed under the terms of the [MIT License](http://opensource.o
 Zhong Wu [@johnonsoftware](https://twitter.com/johnonsoftware), [Autodesk Platform Service](http://aps.autodesk.com)
 # famAI
 
-famAI turns natural language into real Revit families using Autodesk Platform Services Design Automation. Describe a window (dimensions in mm/cm/m or imperial), review a live QA preview, then create and download the RFAno Revit desktop required. Includes a cost-free Test mode that shows the exact APS payload without running a job, BIM 360 integration for storage, and a clean single UI at /.
+famAI turns natural language into real Revit families using Autodesk Platform Services Design Automation. Describe a window (dimensions in mm/cm/m or imperial), review a live QA preview, then create and download the RFA—no Revit desktop required. Includes a cost-free Test mode that shows the exact APS payload without running a job, BIM 360 integration for storage, and a clean single UI at /.
+
+## Security and Secrets
+- Never commit API keys. Configure `GEMINI_API_KEY` and APS credentials in a local `.env` file.
+- Ensure `.env` is gitignored; use `.env.example` for placeholders only.
+- If a key is exposed publicly (e.g., via Git history), rotate it immediately in the provider console, revoke the leaked key, and force-push a cleanup commit after purging the secret from history if needed.

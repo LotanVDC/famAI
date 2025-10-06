@@ -1,0 +1,10 @@
+﻿@@GI@@
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+coverage/
+public/bundles/
+*.rfa
+*.log
