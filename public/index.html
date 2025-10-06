@@ -1,0 +1,498 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <title>famAI - AI-Powered Revit Family Creation</title>
+  <meta charset="utf-8" />
+  <link rel="shortcut icon" href="https://cdn.autodesk.io/favicon.ico ">
+
+  <!-- Common packages: jQuery, Bootstrap, jsTree -->
+  <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/clipboard.js/1.6.0/clipboard.min.js"></script>
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"> 
+
+  <!-- Autodesk APS Viewer files -->
+  <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.min.css" type="text/css">
+  <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.min.js"></script>
+
+  <!-- this project files -->
+  <link href="css/main.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script> 
+  <script src="js/DAConfigure.js"></script>
+  <script src="js/APSTree.js"></script>
+</head>
+
+<body>
+  <!-- Fixed navbar by Bootstrap: https://getbootstrap.com/examples/navbar-fixed-top/ -->
+  <nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container-fluid">
+      <ul class="nav navbar-nav left col-lg-6">
+        <li>
+          <a href="http://developer.autodesk.com" target="_blank">
+            <img alt="Autodesk APS" src="https://cdn.autodesk.io/logo/black/simple.png" height="20">
+          </a>
+        </li>
+        <li>
+          <a href="/famai" style="background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%); color: white; padding: 12px 24px; border-radius: 12px; margin-left: 20px; text-decoration: none; font-weight: bold; box-shadow: 0 4px 12px rgba(13,148,136,0.3); transition: all 0.2s;">
+            <i class="fas fa-cube"></i> fam<span style="font-weight: 900; color: #fb923c;">AI</span>
+          </a>
+        </li>
+      </ul>
+
+      <ul class="nav navbar-nav right col-lg-2">
+        <li>
+          <div style="float: right; margin-top: 15px;">
+            <span style="padding-right: 5px;" data-toggle="modal" data-target="#provisionAccountModal"
+              title="Enable my BIM 360 Account"><span class="glyphicon glyphicon-cog glyphiconTop mlink"> </span> Enable
+              my BIM 360 Account</span>
+          </div>
+        </li>
+      </ul>
+      <ul class="nav navbar-nav right col-lg-2">
+        <li>
+          <div style="float: right; margin-top: 15px; cursor: pointer;">
+            <span style="padding-right: 5px;" data-toggle="modal" data-target="#defineActivityModal"
+              title="Configura AppBundle & Activity">
+              <span class="glyphicon glyphicon-cog glyphiconTop mlink"></span> Configure
+            </span>
+          </div>
+
+        </li>
+      </ul>
+      <ul class="nav navbar-nav right col-lg-2">
+        <div style="padding-top: 10px; text-align: right;">
+          <li>
+            <button class="btn btn-sm btn-default" id="autodeskSigninButton" hidden>Sign In &nbsp&nbsp
+              <img src="https://cdn.autodesk.io/autodesk.png" height="20"> 
+            </button>
+            <button class="btn btn-sm btn-default" id="signOut" hidden>Sign Out &nbsp&nbsp<span id="userInfo"></span>
+            </button>
+          </li>
+        </div>
+      </ul>
+    </div>
+  </nav>
+  <!-- End of navbar -->
+  <div class="container-fluid fill">
+    <div class="row fill">
+      <div class="col-sm-1 fill"></div>
+      <div class="col-sm-5 fill">
+
+        <div class="row">
+          <div style="padding-top: 10px; text-align: center;">
+            <h2>Revit Family Creation Online</h2>
+          </div>
+        </div>
+
+        <!-- famAI Banner -->
+        <div class="row" style="margin: 20px 0;">
+          <div class="col-sm-12">
+            <div style="background: linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #5eead4 100%); color: white; padding: 35px; border-radius: 20px; text-align: center; box-shadow: 0 20px 40px rgba(13,148,136,0.3);">
+              <h2 style="margin-top: 0; color: white; font-size: 36px; font-weight: 800; letter-spacing: -0.5px;">
+                <i class="fas fa-cube" style="animation: float 3s ease-in-out infinite; display: inline-block;"></i> 
+                fam<span style="font-weight: 900; color: #fb923c;">AI</span>
+              </h2>
+              <p style="font-size: 20px; margin: 15px 0; font-weight: 600; opacity: 0.95;">
+                AI-Powered Revit Family Creation Platform
+              </p>
+              <p style="font-size: 17px; margin: 20px auto; max-width: 700px; opacity: 0.9; line-height: 1.6;">
+                Simply describe what you want to create in natural language, and our AI will instantly generate professional parametric Revit families with accurate dimensions.
+              </p>
+              <div style="margin: 25px 0;">
+                <span style="display: inline-block; margin: 6px 12px; padding: 10px 18px; background: rgba(255,255,255,0.2); border-radius: 25px; font-size: 15px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3);">
+                  <i class="fas fa-magic"></i> Smart Dimension Detection
+                </span>
+                <span style="display: inline-block; margin: 6px 12px; padding: 10px 18px; background: rgba(255,255,255,0.2); border-radius: 25px; font-size: 15px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3);">
+                  <i class="fas fa-shapes"></i> Multiple Window Styles
+                </span>
+                <span style="display: inline-block; margin: 6px 12px; padding: 10px 18px; background: rgba(255,255,255,0.2); border-radius: 25px; font-size: 15px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3);">
+                  <i class="fas fa-bolt"></i> Instant RFA Generation
+                </span>
+              </div>
+              <a href="/famai" class="btn btn-lg" style="background: white; color: #0d9488; border: none; padding: 16px 48px; border-radius: 50px; font-weight: bold; text-decoration: none; display: inline-block; margin-top: 15px; font-size: 19px; box-shadow: 0 8px 20px rgba(0,0,0,0.2); transition: all 0.3s;">
+                <i class="fas fa-rocket"></i> Launch famAI
+              </a>
+            </div>
+          </div>
+        </div>
+        <style>
+          @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+          }
+        </style>
+
+        <div class="row ">
+            <div class="row">
+              <div class="row">
+                <div style="padding-top: 10px; text-align: center;">
+                  <h3>Window Family</h3>
+                  <div class="row">
+                    <div style="padding-top: 10px; text-align: center;">
+                      <div class="col-lg-4">
+                        <div class="thumbnail">
+                          <img src="/res/double-hung.png" class="img-rounded" width="150px" height="=150px" alt="Window Double Hung Family">
+                          <div class="caption">
+                            <div class="input-group">
+                              <span class="input-group-addon">
+                                <input type="radio" name='windowStyle' value='DoubleHungWindow' checked>
+                              </span>
+                              <label class="form-control">Double Hung</label>
+                            </div><!-- /input-group -->
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+
+                      <div class="col-lg-4">
+                        <div class="thumbnail">
+                          <img src="/res/fixed.png" class="img-rounded" width="150px" height="=150px" alt="Window Fixed Family">
+                          <div class="caption">
+                            <div class="input-group">
+                              <span class="input-group-addon">
+                                <input type="radio" name='windowStyle' value='FixedWindow'>
+                              </span>
+                              <label class="form-control">Fixed</label>
+                            </div><!-- /input-group -->
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="col-lg-4">
+                        <div class="thumbnail">
+                          <img src="/res/sliding-double.png" class="img-rounded" width="150px" height="=150px" alt="Window Sliding Double">
+                          <div class="caption">
+                            <div class="input-group">
+                              <span class="input-group-addon">
+                                <input type="radio" name='windowStyle' value='SlidingDoubleWindow'>
+                              </span>
+                              <label class="form-control">Sliding Double</label>
+                            </div><!-- /input-group -->
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+
+
+                    </div>
+                  </div><!-- /.row -->
+                  <div class="row" id="windowDoubleHungParams">
+
+                    <div class="col-lg-4">
+                      <h4>Dimensions</h4>
+                      <div style="padding-top: 5px; text-align: left;">
+
+                        <div class="input-group">
+                          <span class="input-group-addon">Type Name</span>
+                          <input id="typeNameId" type="text" class="form-control" placeholder="NewType">
+                        </div>
+                        <br>
+                        <div class="input-group">
+                          <span class="input-group-addon">Height&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                          <input id="windowHeightId" type="number" class="form-control" placeholder="4" min="0">
+                        </div>
+                        <br>
+                        <div class="input-group">
+                          <span class="input-group-addon">Width&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                          <input id="windowWidthId" type="number" class="form-control" placeholder="2" min="0">
+                        </div>
+                        <br>
+                        <div class="input-group">
+                          <span class="input-group-addon">Inset&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                          <input id="windowInsetId" type="number" class="form-control" placeholder="0.05" min="0">
+                        </div>
+                        <br>
+                        <div class="input-group">
+                          <span class="input-group-addon">Sill Height</span>
+                          <input id="windowSillHeightId" type="number" class="form-control" placeholder="3" min="0">
+                        </div>
+                      </div>
+                    </div>
+
+
+                    <div class="col-lg-4">
+                        <h4>Types &nbsp;&nbsp;&nbsp; <button id='createNewType' class="label label-warning">Add</button></h4>
+                        <div style=" text-align: left; overflow:auto; height: 250px; background-color:azure">
+                          <div class="container-fluid list-group" id="familyTypes">
+                          </div>
+                        </div>
+                      </div>
+  
+                    <div class="col-lg-4">
+                      <h4>Materials</h4>
+                      <div style="padding-top: 5px; text-align: left;">
+                        <div class="form-group">
+                          <label for="glassPaneMaterialSelId" class="col-lg-5 control-label">
+                            <h5>Glass Pane</h5>
+                          </label>
+                          <div class="col-lg-7">
+                            <select id="glassPaneMaterialSelId" class="form-control">
+                              <option>Default</option>
+                              <option>Glass</option>
+                              <option>Glass, Matte</option>
+                            </select>
+                          </div>
+                        </div>
+                        <br>
+                        <br>
+                        <br>
+                        <br>
+                        <div class="form-group">
+                          <label for="sashMaterialSelId" class="col-sm-5 control-label">
+                            <h5>Sash</h5>
+                          </label>
+                          <div class="col-sm-7">
+                            <select id="sashMaterialSelId" class="form-control">
+                              <option>Default</option>
+                              <option>Metal</option>
+                              <option>Copper</option>
+                              <option>Gold</option>
+                              <option>Maple</option>
+                            </select>
+                          </div>
+                        </div>
+                        <br>
+                        <br>
+                        <br>
+                        <br>
+                        <br>
+                        <div class="input-group">
+                          <span class="input-group-addon">Family Name</span>
+                          <input id="windowFamilyNameId" type="text" class="form-control" placeholder="Double Hung.rfa">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+
+                  <div class="btn-group btn-lg">
+
+                    <div style="padding-top: 10px;">
+
+                      <button class="btn btn-primary" id="createFamilyBtn">
+                        <span class="glyphicon glyphicon-play"></span>Create
+                      </button>
+                      <button class="btn btn-primary" id="cancelBtn" disabled>
+                        <span class="glyphicon glyphicon-stop"></span>Cancel
+                      </button>
+                    </div>
+                  </div>
+                  <div class="row">
+                      <div style="text-align: left;">
+                        <label id="statusText">
+                          <h4>Progress</h4>
+                        </label>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div>
+                          <div class="progress progress-striped active">
+                              <div id='familyCreationProgressBar' class="progress-bar progress-bar-success" role="progressbar"
+                                   aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"
+                                   style="width: 0%;">
+                                  <span class="sr-only">40% 完成</span>
+                              </div>
+                          </div>
+                      </div>
+                    </div>                
+                  </div>
+              </div>
+            </div>
+        </div>
+      </div>
+
+      <div class="col-sm-1 fill">
+      </div>
+
+      <div class="col-sm-5 fill">
+        <br />
+        <div>
+          <label>
+            <h4>Output Folder</h4>
+          </label>
+        </div>
+        <div class="panel panel-default fill">
+          <div class="panel-heading" data-toggle="tooltip" style="padding: 0px;">
+            <span id="refreshHubsDestination" class="glyphicon glyphicon-refresh" style="cursor: pointer; display: none"
+              title="Refresh list of files"></span>
+          </div>
+
+          <div id="userHubsDestination">
+            <div style="padding-top: 100px; text-align: center;">
+              <br />
+              <br />
+              <br /> You may also need to provision your<br /> BIM 360 Docs account for this app.<br />
+              <a href="https://aps.autodesk.com/blog/bim-360-docs-provisioning-forge-apps">Learn more</a>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <!-- Modal Provision BIM360  -->
+    <div class="modal fade" id="provisionAccountModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cancel">
+              <span aria-hidden="true">&times;</span>
+            </button>
+            <h4 class="modal-title">Thanks for using this sample!</h4>
+          </div>
+          <div class="modal-body">
+            <p>To view your BIM 360 Docs files on this app please authorize my APS Client ID with your BIM 360 Docs
+              Account.
+            </p>
+            <p>
+              <button type="button" class="btn btn-info" data-toggle="modal" data-target="#provisionAccountStepsModal">
+                Show me the steps
+                <span class="glyphicon glyphicon-new-window"></span>
+              </button>
+            </p>
+            Use this as APS Client ID:
+            <div class="input-group">
+              <input type="text" readonly="true" aria-describedby="CopyClientID" id="ClientID" class="form-control" value="" />
+              <span class="input-group-addon" style="cursor: pointer" data-clipboard-target="#ClientID" id="CopyClientID">Copy
+                to clipboard</span>
+            </div>
+            And this App Name:
+            <div class="input-group">
+              <input type="text" readonly="true" aria-describedby="CopyAppName" id="AppName" class="form-control" value="Revit Window Family Creation Sample" />
+              <span class="input-group-addon" style="cursor: pointer" data-clipboard-target="#AppName" id="CopyAppName">Copy
+                to clipboard</span>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="provisionAccountSave">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Define AppBundle & Activity -->
+    <div class="modal fade" id="defineActivityModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cancel"><span
+                aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title" id="myModalLabel">AppBundle & Activity</h4>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-warning">
+              <center>Define AppBundle &amp; Activity only once.<br />Redefine only when your plugin code change
+                (creates a new version).</center>
+            </div>
+            <div class="form-group">
+              <label for="localBundles">Select a local AppBundle:</label>
+              <select class="form-control" id="localBundles"> </select>
+              <b>Tip:</b> Make sure .ZIP bundles are placed at <b>/bundles/</b> folder
+            </div>
+            <div class="form-group">
+              <label for="engines">Select engine:</label>
+              <select class="form-control" id="engines"> </select>
+            </div>
+            For this sample the .ZIP name is used as suffix to define <b>AppBundle</b> and <b>Activity</b>
+            names. Activities will have the following parameters: <br>
+            &nbsp&nbsp&nbsp&nbsp<b>templateFile:</b> Revit window family template file <br>
+            &nbsp&nbsp&nbsp&nbsp<b>windowParams:</b> Identify the window family type parameters  <br>
+            &nbsp&nbsp&nbsp&nbsp<b>resultFamily:</b> Output Revit Family file, new created Winodw Family <br>
+
+            <div style="text-align: left;">
+              <label id="configText">
+                <h4>Status</h4>
+              </label>
+            </div>
+            <div>
+              <div class="progress progress-striped active">
+                <div id='configProgressBar' width=90% class="progress-bar progress-bar-success" role="progressbar"
+                  aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
+                  <span class="sr-only">40% 完成</span>
+                </div>
+              </div>
+            </div>
+
+
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="createAppBundleActivity">Create/Update</button>
+            <button class="btn btn-danger" id="clearAccount">Delete</button>
+          </div>
+
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Provision BIM360 Help  -->
+    <div class="modal fade" id="provisionAccountStepsModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cancel">
+              <span aria-hidden="true">&times;</span>
+            </button>
+            <h4 class="modal-title" id="myModalLabel1">Step-by-step guide</h4>
+          </div>
+          <div class="modal-body">
+            <p>To access your BIM 360 Docs files with this app, you need to connect your BIM 360 account with the app.</p>
+            <ol>
+              <li>Log in to
+                <a href="https://bim360enterprise.autodesk.com/" target="_blank">BIM 360 Account Administration
+                </a>. Note that you need account administrator permissions.
+              </li>
+              <li>If you have more than one account, select the account you want to integrate with the app.</li>
+              <li>From the toolbar, select
+                <strong>SETTINGS &gt; Apps &amp; Integrations</strong>.
+                <br />
+                <img src="./res/Step1.png" width="500" />
+              </li>
+              <li>Click the
+                <strong>Add Integration</strong> button.
+                <br />
+                <img src="./res/Step2.png" />
+              </li>
+              <li>Select
+                <strong>BIM 360 Account Administration</strong> and
+                <strong>BIM 360 Docs</strong>, and click
+                <strong>Next</strong>.
+              </li>
+              <li>Select
+                <strong>I’m the developer</strong>, and click
+                <strong>Next</strong>.</li>
+              <li>In the
+                <strong>APS Client ID</strong> and
+                <strong>App Name</strong> fields, enter the APS client ID and app name provided by the app retailer.
+              </li>
+              <li>Select the
+                <strong>I have saved the Account ID information securely</strong> checkbox.</li>
+              <li>Click
+                <strong>Save</strong>.<br />
+                <img src="./res/Step3.png" width="500" />
+              </li>
+              <p></p>
+              <p>Congratulations! You can now access your BIM 360 Docs files.</p>
+            </ol>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Understood, thanks!</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+        new Clipboard('.input-group-addon');
+    </script>
+    
+</body>
+<iframe id="hiddenFrame" style="visibility: hidden; display: none" />
+</html>

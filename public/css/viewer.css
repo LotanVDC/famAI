@@ -1,0 +1,124 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    font-family: ArtifaktElement, Arial, sans-serif;
+}
+
+#header, #preview, #overlay {
+    position: absolute;
+    width: 100%;
+}
+
+#header {
+    height: 3em;
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+    align-items: center;
+    background: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+    padding: 0 1em;
+    box-sizing: border-box;
+}
+
+#preview, #overlay {
+    top: 3em;
+    bottom: 0;
+}
+
+#overlay {
+    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#overlay > .notification {
+    background: white;
+    padding: 2em;
+    border-radius: 8px;
+    text-align: center;
+    max-width: 400px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007acc;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1em;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#header > * {
+    height: 2em;
+    margin: 0 0.5em;
+    font-size: 1em;
+    font-family: ArtifaktElement, Arial, sans-serif;
+}
+
+#header .title {
+    flex: 1 0 auto;
+    height: auto;
+    font-weight: bold;
+    color: #333;
+}
+
+#header .controls {
+    display: flex;
+    gap: 0.5em;
+}
+
+#header button {
+    padding: 0.5em 1em;
+    border: 1px solid #007acc;
+    background: #007acc;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+#header button:hover:not(:disabled) {
+    background: #005a9e;
+}
+
+#header button:disabled {
+    background: #ccc;
+    border-color: #ccc;
+    cursor: not-allowed;
+}
+
+.logo {
+    height: 2em;
+    width: auto;
+}
+
+.status-message {
+    margin-top: 1em;
+    padding: 1em;
+    border-radius: 4px;
+    background: #e8f4fd;
+    border-left: 4px solid #007acc;
+}
+
+.status-message.error {
+    background: #fdeaea;
+    border-left-color: #dc3545;
+    color: #721c24;
+}
+
+.status-message.success {
+    background: #eafaf1;
+    border-left-color: #28a745;
+    color: #155724;
+}

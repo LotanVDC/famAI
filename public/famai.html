@@ -1,0 +1,287 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>famAI - AI-Powered Revit Family Creation</title>
+    <link rel="stylesheet" href="/css/famai.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'></text></svg>">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <i class="fas fa-cube logo-icon"></i>
+                    <h1>fam<span class="ai-highlight">AI</span></h1>
+                    <span class="version">v1.0</span>
+                </div>
+                <div class="tagline">AI-Powered Revit Family Creation</div>
+                <div class="user-section">
+                    <div class="user-info">
+                        <i class="fas fa-user"></i>
+                        <span id="userName">Loading...</span>
+                    </div>
+                    <button class="btn btn-outline" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-magic"></i> Quick Actions</h3>
+                    <button class="btn btn-primary btn-block" onclick="startNewFamily()">
+                        <i class="fas fa-plus"></i> New Family
+                    </button>
+                    <button class="btn btn-secondary btn-block" onclick="showExamples()">
+                        <i class="fas fa-lightbulb"></i> View Examples
+                    </button>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-cog"></i> APS Configuration</h3>
+                    <div class="config-section">
+                        <div class="config-status" id="configStatus">
+                            <span class="status-dot" id="statusIndicator"></span>
+                            <span id="configStatusText">Checking configuration...</span>
+                        </div>
+                        <div class="config-controls" id="configControls" style="display: none;">
+                            <select id="engines" class="form-control">
+                                <option value="">Select Engine...</option>
+                            </select>
+                            <select id="localBundles" class="form-control">
+                                <option value="">Select Bundle...</option>
+                                <option value="CreateWindowApp.zip">CreateWindowApp.zip</option>
+                            </select>
+                            <button class="btn btn-primary btn-block" id="createAppBundleActivity">
+                                <i class="fas fa-upload"></i> Configure APS
+                            </button>
+                            <button class="btn btn-danger btn-block" id="clearAccount" style="display: none;">
+                                <i class="fas fa-trash"></i> Clear Configuration
+                            </button>
+                        </div>
+                        <div class="config-progress" id="configProgress" style="display: none;">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="configProgressBar"></div>
+                            </div>
+                            <div class="progress-text" id="configText">Initializing...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-history"></i> Recent Sessions</h3>
+                    <div id="recentSessions" class="session-list">
+                        <!-- Recent sessions will be loaded here -->
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-sliders-h"></i> Settings</h3>
+                    <div class="setting-item">
+                        <label>LOD Level:</label>
+                        <select id="lodLevel" class="form-control" onchange="updateSettings()">
+                            <option value="200">LOD 200 (Design)</option>
+                            <option value="300" selected>LOD 300 (Construction)</option>
+                            <option value="400">LOD 400 (Fabrication)</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>Quality Mode:</label>
+                        <select id="qualityMode" class="form-control" onchange="updateSettings()">
+                            <option value="balanced" selected>Balanced</option>
+                            <option value="performance">Performance</option>
+                            <option value="quality">High Quality</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Model Selection Section -->
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-folder"></i> Available Models</h3>
+                    <div id="modelSelection">
+                        <div class="model-list" id="modelList">
+                            <div class="no-models" id="noModels">
+                                <i class="fas fa-info-circle"></i>
+                                <p>No models available yet. Create a family first!</p>
+                            </div>
+                        </div>
+                        <div class="model-controls">
+                            <button class="btn btn-sm btn-outline" onclick="refreshModels()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                            <button class="btn btn-sm btn-primary" onclick="openViewer()" id="viewModelBtn" disabled>
+                                <i class="fas fa-eye"></i> View Selected
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Panel -->
+            <div class="main-panel">
+                <!-- Chat Interface -->
+                <div class="chat-container">
+                    <div class="chat-header">
+                        <h2><i class="fas fa-comments"></i> Natural Language Design</h2>
+                        <div class="chat-controls">
+                            <button class="btn btn-sm btn-outline" onclick="clearChat()">
+                                <i class="fas fa-trash"></i> Clear
+                            </button>
+                            <button class="btn btn-sm btn-outline" onclick="exportChat()">
+                                <i class="fas fa-download"></i> Export
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message system-message">
+                            <div class="message-content">
+                                <div class="welcome-header">
+                                    <i class="fas fa-robot"></i>
+                                    <h3>Welcome to fam<span class="ai-highlight">AI</span>!</h3>
+                                </div>
+                                <p>Describe your window family in natural language</p>
+                                <div class="example-prompts">
+                                    <button class="example-btn" onclick="useExample('Create a 900 mm wide, 1200 mm high double-hung window with 900 mm sill height')">
+                                        <i class="fas fa-th-large"></i>
+                                        <span>900x1200mm double-hung, 900mm sill</span>
+                                    </button>
+                                    <button class="example-btn" onclick="useExample('Create a 1200 mm wide, 1500 mm high sliding window with 3 inch frame depth')">
+                                        <i class="fas fa-arrows-alt-h"></i>
+                                        <span>1200x1500mm sliding, 3in depth</span>
+                                    </button>
+                                    <button class="example-btn" onclick="useExample('Create an 800 mm wide, 1000 mm high fixed window 750 mm from floor')">
+                                        <i class="fas fa-square"></i>
+                                        <span>800x1000mm fixed, 750mm floor</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-container">
+                        <div class="input-wrapper">
+                            <textarea 
+                                id="chatInput" 
+                                placeholder="💡 Describe your Revit family... (e.g., 'Create a 2400mm wide, 1200mm high double-hung window')"
+                                rows="3"
+                                onkeydown="handleKeyDown(event)"
+                            ></textarea>
+                            <button class="btn btn-primary send-btn" onclick="sendMessage()" id="sendButton">
+                                <i class="fas fa-paper-plane"></i>
+                                <span id="sendButtonText">Send</span>
+                            </button>
+                        </div>
+                        <div class="input-hints">
+                            <span class="hint">
+                                <i class="fas fa-lightbulb"></i> 
+                                <strong>Tip:</strong> You can specify dimensions in mm, cm, feet, or inches
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Family Preview Panel -->
+                <div class="preview-panel" id="previewPanel" style="display: none;">
+                    <div class="preview-header">
+                        <h3><i class="fas fa-eye"></i> Family Preview</h3>
+                        <div class="preview-controls">
+                            <button class="btn btn-sm btn-outline" onclick="togglePreview()">
+                                <i class="fas fa-times"></i> Close
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-content">
+                        <div class="family-metadata">
+                            <h4>Family Information</h4>
+                            <div class="metadata-grid">
+                                <div class="metadata-item">
+                                    <label>Name:</label>
+                                    <span id="previewFamilyName">-</span>
+                                </div>
+                                <div class="metadata-item">
+                                    <label>Category:</label>
+                                    <span id="previewCategory">-</span>
+                                </div>
+                                <div class="metadata-item">
+                                    <label>LOD Level:</label>
+                                    <span id="previewLOD">-</span>
+                                </div>
+                                <div class="metadata-item">
+                                    <label>Parameters:</label>
+                                    <span id="previewParamCount">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="qa-validation">
+                            <h4>Quality Assurance</h4>
+                            <div id="qaResults" class="qa-results">
+                                <!-- QA results will be displayed here -->
+                            </div>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button class="btn btn-primary" onclick="executeFamily()" id="executeBtn" disabled>
+                                <i class="fas fa-play"></i> Create Family
+                            </button>
+                            <button class="btn btn-secondary" onclick="testFamily()" id="testBtn" disabled>
+                                <i class="fas fa-vial"></i> Test
+                            </button>
+                            <button class="btn btn-secondary" onclick="refineFamily()">
+                                <i class="fas fa-edit"></i> Refine Design
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Status Bar -->
+        <div class="status-bar" id="statusBar">
+            <div class="status-content">
+                <span class="status-dot ready" id="mainStatusIndicator"></span>
+                <span class="status-text" id="statusText">Ready</span>
+                <div class="status-progress" id="statusProgress" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <span class="progress-text" id="progressText">0%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Viewer Container -->
+    <div class="viewer-container" id="viewerContainer">
+        <div class="viewer-header">
+            <h3><i class="fas fa-cube"></i> <span id="viewerTitle">Model Viewer</span></h3>
+            <div class="viewer-controls">
+                <button class="btn btn-sm btn-outline" onclick="closeViewer()">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+        <div class="viewer-content">
+            <div class="viewer-loading" id="viewerLoading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading model...</p>
+            </div>
+            <div id="viewer"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/famai.js"></script>
+</body>
+</html>
