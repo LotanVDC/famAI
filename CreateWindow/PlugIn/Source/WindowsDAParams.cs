@@ -19,6 +19,13 @@ namespace Autodesk.APS.RevitIO.CreateWindow
     {
         public TypeDAParams[] Types { get; set; } = { new TypeDAParams() };
 
+        public class UnitsContext
+        {
+            public String lengthUnit { get; set; } = "ft"; // payload unit
+        }
+
+        public UnitsContext unitsContext { get; set; } = new UnitsContext();
+
         public String WindowStyle { get; set; } = "DoubleHungWindow";
         public String GlassPaneMaterial { get; set; } = "Default";
         public String SashMaterial { get; set; } = "Default";

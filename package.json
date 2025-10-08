@@ -4,7 +4,9 @@
   "description": "famAI - AI-Powered Revit Family Creation Platform",
   "main": "start.js",
   "scripts": {
-    "start": "node start.js"
+    "start": "node start.js",
+    "setup-db": "node setup-mongodb.js",
+    "setup-db-samples": "node setup-mongodb.js --with-samples"
   },
   "author": "famAI Team",
   "license": "MIT",
@@ -13,10 +15,12 @@
     "@aps_sdk/model-derivative": "^1.2.0",
     "@aps_sdk/oss": "^1.2.2",
     "@google/generative-ai": "^0.24.1",
+    "bcryptjs": "^2.4.3",
     "cookie-session": "^2.0.0",
     "dotenv": "^17.2.3",
     "express": "^4.18.2",
     "forge-apis": "^0.9.7",
+    "mongoose": "^8.0.3",
     "request": "^2.88.2",
     "socket.io": "^4.7.2"
   }

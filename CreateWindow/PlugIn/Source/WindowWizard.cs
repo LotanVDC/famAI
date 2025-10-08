@@ -73,10 +73,12 @@ namespace Autodesk.APS.RevitIO.CreateWindow
                 foreach (TypeDAParams type in windowFamilyParams.Types)
                 {
                     DoubleHungWinPara dbhungWinPara = new DoubleHungWinPara(m_para.Validator.IsMetric);
-                    dbhungWinPara.Height = type.WindowHeight;
-                    dbhungWinPara.Width = type.WindowWidth;
-                    dbhungWinPara.Inset = type.WindowInset;
-                    dbhungWinPara.SillHeight = type.WindowSillHeight;
+                    // Values are expected in Revit internal units (ft). If payload
+                    // declares a different unit, convert to internal.
+                    dbhungWinPara.Height = ConvertToInternal(type.WindowHeight, windowFamilyParams.unitsContext);
+                    dbhungWinPara.Width = ConvertToInternal(type.WindowWidth, windowFamilyParams.unitsContext);
+                    dbhungWinPara.Inset = ConvertToInternal(type.WindowInset, windowFamilyParams.unitsContext);
+                    dbhungWinPara.SillHeight = ConvertToInternal(type.WindowSillHeight, windowFamilyParams.unitsContext);
                     dbhungWinPara.Type = type.TypeName;
                     m_para.CurrentPara = dbhungWinPara;
                     if (!m_para.WinParaTab.Contains(dbhungWinPara.Type))
@@ -98,10 +100,10 @@ namespace Autodesk.APS.RevitIO.CreateWindow
                 foreach (TypeDAParams type in windowFamilyParams.Types)
                 {
                     SlidingDoubleWinPara slidingDoubleWinPara = new SlidingDoubleWinPara(m_para.Validator.IsMetric);
-                    slidingDoubleWinPara.Height = type.WindowHeight;
-                    slidingDoubleWinPara.Width = type.WindowWidth;
-                    slidingDoubleWinPara.Inset = type.WindowInset;
-                    slidingDoubleWinPara.SillHeight = type.WindowSillHeight;
+                    slidingDoubleWinPara.Height = ConvertToInternal(type.WindowHeight, windowFamilyParams.unitsContext);
+                    slidingDoubleWinPara.Width = ConvertToInternal(type.WindowWidth, windowFamilyParams.unitsContext);
+                    slidingDoubleWinPara.Inset = ConvertToInternal(type.WindowInset, windowFamilyParams.unitsContext);
+                    slidingDoubleWinPara.SillHeight = ConvertToInternal(type.WindowSillHeight, windowFamilyParams.unitsContext);
                     slidingDoubleWinPara.Type = type.TypeName;
                     m_para.CurrentPara = slidingDoubleWinPara;
                     if (!m_para.WinParaTab.Contains(slidingDoubleWinPara.Type))
@@ -123,10 +125,10 @@ namespace Autodesk.APS.RevitIO.CreateWindow
                 foreach (TypeDAParams type in windowFamilyParams.Types)
                 {
                     FixedWinPara fixedWinPara = new FixedWinPara(m_para.Validator.IsMetric);
-                    fixedWinPara.Height = type.WindowHeight;
-                    fixedWinPara.Width = type.WindowWidth;
-                    fixedWinPara.Inset = type.WindowInset;
-                    fixedWinPara.SillHeight = type.WindowSillHeight;
+                    fixedWinPara.Height = ConvertToInternal(type.WindowHeight, windowFamilyParams.unitsContext);
+                    fixedWinPara.Width = ConvertToInternal(type.WindowWidth, windowFamilyParams.unitsContext);
+                    fixedWinPara.Inset = ConvertToInternal(type.WindowInset, windowFamilyParams.unitsContext);
+                    fixedWinPara.SillHeight = ConvertToInternal(type.WindowSillHeight, windowFamilyParams.unitsContext);
                     fixedWinPara.Type = type.TypeName;
                     m_para.CurrentPara = fixedWinPara;
                     if (!m_para.WinParaTab.Contains(fixedWinPara.Type))
@@ -142,6 +144,34 @@ namespace Autodesk.APS.RevitIO.CreateWindow
                 m_para.SashMat = windowFamilyParams.SashMaterial;
             }
             return Creation();
+        }
+
+        private static double ConvertToInternal(double value, WindowsDAParams.UnitsContext units)
+        {
+            // Revit internal is feet; if payload states feet (default), pass through
+            if (units == null || string.IsNullOrEmpty(units.lengthUnit)) return value;
+            var u = units.lengthUnit.ToLower();
+            switch (u)
+            {
+                case "ft":
+                case "feet":
+                case "foot":
+                    return value;
+                case "in":
+                case "inch":
+                case "inches":
+                    return UnitUtils.ConvertToInternalUnits(value, UnitTypeId.Inches);
+                case "mm":
+                    return UnitUtils.ConvertToInternalUnits(value, UnitTypeId.Millimeters);
+                case "cm":
+                    return UnitUtils.ConvertToInternalUnits(value, UnitTypeId.Centimeters);
+                case "m":
+                case "meter":
+                case "metre":
+                    return UnitUtils.ConvertToInternalUnits(value, UnitTypeId.Meters);
+                default:
+                    return value;
+            }
         }
 
         /// <summary>

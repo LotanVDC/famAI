@@ -1,498 +1,950 @@
 ﻿<!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>famAI - AI-Powered Revit Family Creation</title>
-  <meta charset="utf-8" />
-  <link rel="shortcut icon" href="https://cdn.autodesk.io/favicon.ico ">
-
-  <!-- Common packages: jQuery, Bootstrap, jsTree -->
-  <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-  <script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
-  <script src="//cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
-  <script src="//cdnjs.cloudflare.com/ajax/libs/clipboard.js/1.6.0/clipboard.min.js"></script>
-  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css">
-  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"> 
-
-  <!-- Autodesk APS Viewer files -->
-  <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.min.css" type="text/css">
-  <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.min.js"></script>
-
-  <!-- this project files -->
-  <link href="css/main.css" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script> 
-  <script src="js/DAConfigure.js"></script>
-  <script src="js/APSTree.js"></script>
-</head>
-
-<body>
-  <!-- Fixed navbar by Bootstrap: https://getbootstrap.com/examples/navbar-fixed-top/ -->
-  <nav class="navbar navbar-default navbar-fixed-top">
-    <div class="container-fluid">
-      <ul class="nav navbar-nav left col-lg-6">
-        <li>
-          <a href="http://developer.autodesk.com" target="_blank">
-            <img alt="Autodesk APS" src="https://cdn.autodesk.io/logo/black/simple.png" height="20">
-          </a>
-        </li>
-        <li>
-          <a href="/famai" style="background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%); color: white; padding: 12px 24px; border-radius: 12px; margin-left: 20px; text-decoration: none; font-weight: bold; box-shadow: 0 4px 12px rgba(13,148,136,0.3); transition: all 0.2s;">
-            <i class="fas fa-cube"></i> fam<span style="font-weight: 900; color: #fb923c;">AI</span>
-          </a>
-        </li>
-      </ul>
-
-      <ul class="nav navbar-nav right col-lg-2">
-        <li>
-          <div style="float: right; margin-top: 15px;">
-            <span style="padding-right: 5px;" data-toggle="modal" data-target="#provisionAccountModal"
-              title="Enable my BIM 360 Account"><span class="glyphicon glyphicon-cog glyphiconTop mlink"> </span> Enable
-              my BIM 360 Account</span>
-          </div>
-        </li>
-      </ul>
-      <ul class="nav navbar-nav right col-lg-2">
-        <li>
-          <div style="float: right; margin-top: 15px; cursor: pointer;">
-            <span style="padding-right: 5px;" data-toggle="modal" data-target="#defineActivityModal"
-              title="Configura AppBundle & Activity">
-              <span class="glyphicon glyphicon-cog glyphiconTop mlink"></span> Configure
-            </span>
-          </div>
-
-        </li>
-      </ul>
-      <ul class="nav navbar-nav right col-lg-2">
-        <div style="padding-top: 10px; text-align: right;">
-          <li>
-            <button class="btn btn-sm btn-default" id="autodeskSigninButton" hidden>Sign In &nbsp&nbsp
-              <img src="https://cdn.autodesk.io/autodesk.png" height="20"> 
-            </button>
-            <button class="btn btn-sm btn-default" id="signOut" hidden>Sign Out &nbsp&nbsp<span id="userInfo"></span>
-            </button>
-          </li>
-        </div>
-      </ul>
-    </div>
-  </nav>
-  <!-- End of navbar -->
-  <div class="container-fluid fill">
-    <div class="row fill">
-      <div class="col-sm-1 fill"></div>
-      <div class="col-sm-5 fill">
-
-        <div class="row">
-          <div style="padding-top: 10px; text-align: center;">
-            <h2>Revit Family Creation Online</h2>
-          </div>
-        </div>
-
-        <!-- famAI Banner -->
-        <div class="row" style="margin: 20px 0;">
-          <div class="col-sm-12">
-            <div style="background: linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #5eead4 100%); color: white; padding: 35px; border-radius: 20px; text-align: center; box-shadow: 0 20px 40px rgba(13,148,136,0.3);">
-              <h2 style="margin-top: 0; color: white; font-size: 36px; font-weight: 800; letter-spacing: -0.5px;">
-                <i class="fas fa-cube" style="animation: float 3s ease-in-out infinite; display: inline-block;"></i> 
-                fam<span style="font-weight: 900; color: #fb923c;">AI</span>
-              </h2>
-              <p style="font-size: 20px; margin: 15px 0; font-weight: 600; opacity: 0.95;">
-                AI-Powered Revit Family Creation Platform
-              </p>
-              <p style="font-size: 17px; margin: 20px auto; max-width: 700px; opacity: 0.9; line-height: 1.6;">
-                Simply describe what you want to create in natural language, and our AI will instantly generate professional parametric Revit families with accurate dimensions.
-              </p>
-              <div style="margin: 25px 0;">
-                <span style="display: inline-block; margin: 6px 12px; padding: 10px 18px; background: rgba(255,255,255,0.2); border-radius: 25px; font-size: 15px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3);">
-                  <i class="fas fa-magic"></i> Smart Dimension Detection
-                </span>
-                <span style="display: inline-block; margin: 6px 12px; padding: 10px 18px; background: rgba(255,255,255,0.2); border-radius: 25px; font-size: 15px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3);">
-                  <i class="fas fa-shapes"></i> Multiple Window Styles
-                </span>
-                <span style="display: inline-block; margin: 6px 12px; padding: 10px 18px; background: rgba(255,255,255,0.2); border-radius: 25px; font-size: 15px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3);">
-                  <i class="fas fa-bolt"></i> Instant RFA Generation
-                </span>
-              </div>
-              <a href="/famai" class="btn btn-lg" style="background: white; color: #0d9488; border: none; padding: 16px 48px; border-radius: 50px; font-weight: bold; text-decoration: none; display: inline-block; margin-top: 15px; font-size: 19px; box-shadow: 0 8px 20px rgba(0,0,0,0.2); transition: all 0.3s;">
-                <i class="fas fa-rocket"></i> Launch famAI
-              </a>
-            </div>
-          </div>
-        </div>
+    <link rel="stylesheet" href="/css/famai.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'></text></svg>">
         <style>
+        /* Login Page Specific Styles */
+        .login-container {
+            height: 100vh;
+            max-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--background-color) 0%, var(--surface-color) 100%);
+            position: relative;
+            overflow: hidden;
+            padding: 1rem;
+        }
+
+        .login-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+            z-index: 1;
+        }
+
+        .login-background::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(45deg, transparent 30%, rgba(16, 185, 129, 0.02) 50%, transparent 70%),
+                linear-gradient(-45deg, transparent 30%, rgba(16, 185, 129, 0.02) 50%, transparent 70%);
+            animation: backgroundShift 20s ease-in-out infinite;
+        }
+
+        @keyframes backgroundShift {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .login-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            z-index: 2;
+            backdrop-filter: blur(20px);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .login-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-logo i {
+            font-size: 1.75rem;
+            color: var(--primary-color);
+            filter: drop-shadow(var(--glow-primary));
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .login-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.025em;
+            margin: 0;
+        }
+
+        .ai-highlight {
+            color: var(--primary-light);
+            font-weight: 900;
+        }
+
+        .login-subtitle {
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+            margin: 0.25rem 0 0 0;
+            font-weight: 500;
+        }
+
+        .login-description {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            text-align: center;
+            margin-bottom: 1rem;
+            line-height: 1.3;
+        }
+
+        .auth-providers {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .auth-provider {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 0.875rem;
+            background: var(--surface-hover);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            text-decoration: none;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.8125rem;
+        }
+
+        .auth-provider:hover {
+            background: var(--surface-elevated);
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .auth-provider i {
+            font-size: 1.125rem;
+            width: 1.5rem;
+            text-align: center;
+        }
+
+        .auth-provider.autodesk i {
+            color: #d83b01;
+        }
+
+        .auth-provider.autodesk img {
+            filter: brightness(0) invert(1);
+            opacity: 0.9;
+        }
+
+        .auth-provider.autodesk:hover img {
+            opacity: 1;
+        }
+
+        .auth-provider.google i {
+            color: #4285f4;
+        }
+
+        .auth-provider.github i {
+            color: #333;
+        }
+
+
+        .auth-provider.demo i {
+            color: var(--primary-color);
+        }
+
+        /* Form Styles */
+        .login-form {
+            margin-top: 1rem;
+        }
+
+        .form-group {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem 2.5rem 0.75rem 0.75rem;
+            background: var(--surface-hover);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: all var(--transition-base);
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .form-icon {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            font-size: 0.875rem;
+            pointer-events: none;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            font-size: 0.875rem;
+            padding: 0;
+            z-index: 2;
+        }
+
+        .password-toggle:hover {
+            color: var(--text-secondary);
+        }
+
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 0.5rem 0;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            display: none;
+        }
+
+        .checkmark {
+            width: 1rem;
+            height: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: var(--surface-hover);
+            position: relative;
+            transition: all var(--transition-base);
+        }
+
+        .checkbox-label input[type="checkbox"]:checked + .checkmark {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .forgot-password {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 0.75rem;
+            transition: color var(--transition-base);
+        }
+
+        .forgot-password:hover {
+            color: var(--primary-light);
+        }
+
+        .form-switch {
+            text-align: center;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .form-switch p {
+            margin: 0;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .form-switch a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color var(--transition-base);
+        }
+
+        .form-switch a:hover {
+            color: var(--primary-light);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 1rem 0;
+            color: var(--text-tertiary);
+            font-size: 0.75rem;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        .divider span {
+            padding: 0 1rem;
+        }
+
+        .demo-access {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: var(--radius-md);
+            margin-bottom: 1rem;
+        }
+
+        .demo-access h3 {
+            color: var(--primary-color);
+            margin: 0 0 0.25rem 0;
+            font-size: 0.9375rem;
+            font-weight: 700;
+        }
+
+        .demo-access p {
+            color: var(--text-secondary);
+            margin: 0 0 0.75rem 0;
+            font-size: 0.75rem;
+        }
+
+
+        .footer-links {
+            text-align: center;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .footer-links a {
+            color: var(--text-tertiary);
+            text-decoration: none;
+            font-size: 0.75rem;
+            margin: 0 0.75rem;
+            transition: color var(--transition-base);
+        }
+
+        .footer-links a:hover {
+            color: var(--primary-color);
+        }
+
           @keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-5px); }
           }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 2px solid var(--border-color);
+            border-top: 2px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .notification-content i {
+            font-size: 1.125rem;
+        }
+
+        .notification-info .notification-content i {
+            color: var(--info-color);
+        }
+
+        .notification-success .notification-content i {
+            color: var(--success-color);
+        }
+
+        .notification-warning .notification-content i {
+            color: var(--warning-color);
+        }
+
+        .notification-error .notification-content i {
+            color: var(--error-color);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .login-card {
+                margin: 0.75rem;
+                padding: 1.5rem;
+                max-width: 100%;
+            }
+
+            .login-title {
+                font-size: 1.75rem;
+            }
+
+            .login-logo i {
+                font-size: 2rem;
+            }
+
+            .login-subtitle {
+                font-size: 0.875rem;
+            }
+
+            .login-description {
+                font-size: 0.75rem;
+                margin-bottom: 1.25rem;
+            }
+
+            .demo-access {
+                padding: 1rem;
+                margin-bottom: 1.25rem;
+            }
+
+            .demo-access h3 {
+                font-size: 0.9375rem;
+            }
+
+            .demo-access p {
+                font-size: 0.75rem;
+            }
+
+            .auth-providers {
+                gap: 0.625rem;
+                margin-bottom: 1.25rem;
+            }
+
+            .auth-provider {
+                padding: 0.75rem 0.875rem;
+                font-size: 0.8125rem;
+            }
+
+            .auth-provider i {
+                font-size: 1.125rem;
+                width: 1.5rem;
+            }
+
+            .divider {
+                margin: 1.25rem 0;
+                font-size: 0.75rem;
+            }
+
+
+            .footer-links {
+                margin-top: 1.25rem;
+                padding-top: 1.25rem;
+            }
+
+            .footer-links a {
+                font-size: 0.6875rem;
+                margin: 0 0.5rem;
+            }
+          }
         </style>
-
-        <div class="row ">
-            <div class="row">
-              <div class="row">
-                <div style="padding-top: 10px; text-align: center;">
-                  <h3>Window Family</h3>
-                  <div class="row">
-                    <div style="padding-top: 10px; text-align: center;">
-                      <div class="col-lg-4">
-                        <div class="thumbnail">
-                          <img src="/res/double-hung.png" class="img-rounded" width="150px" height="=150px" alt="Window Double Hung Family">
-                          <div class="caption">
-                            <div class="input-group">
-                              <span class="input-group-addon">
-                                <input type="radio" name='windowStyle' value='DoubleHungWindow' checked>
-                              </span>
-                              <label class="form-control">Double Hung</label>
-                            </div><!-- /input-group -->
-                            </p>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-background"></div>
+        
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-logo">
+                    <i class="fas fa-cube"></i>
                           </div>
-                        </div>
+                <h1 class="login-title">fam<span class="ai-highlight">AI</span></h1>
+                <p class="login-subtitle">AI-Powered Revit Family Creation</p>
                       </div>
 
-
-                      <div class="col-lg-4">
-                        <div class="thumbnail">
-                          <img src="/res/fixed.png" class="img-rounded" width="150px" height="=150px" alt="Window Fixed Family">
-                          <div class="caption">
-                            <div class="input-group">
-                              <span class="input-group-addon">
-                                <input type="radio" name='windowStyle' value='FixedWindow'>
-                              </span>
-                              <label class="form-control">Fixed</label>
-                            </div><!-- /input-group -->
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="col-lg-4">
-                        <div class="thumbnail">
-                          <img src="/res/sliding-double.png" class="img-rounded" width="150px" height="=150px" alt="Window Sliding Double">
-                          <div class="caption">
-                            <div class="input-group">
-                              <span class="input-group-addon">
-                                <input type="radio" name='windowStyle' value='SlidingDoubleWindow'>
-                              </span>
-                              <label class="form-control">Sliding Double</label>
-                            </div><!-- /input-group -->
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-
-
-                    </div>
-                  </div><!-- /.row -->
-                  <div class="row" id="windowDoubleHungParams">
-
-                    <div class="col-lg-4">
-                      <h4>Dimensions</h4>
-                      <div style="padding-top: 5px; text-align: left;">
-
-                        <div class="input-group">
-                          <span class="input-group-addon">Type Name</span>
-                          <input id="typeNameId" type="text" class="form-control" placeholder="NewType">
-                        </div>
-                        <br>
-                        <div class="input-group">
-                          <span class="input-group-addon">Height&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                          <input id="windowHeightId" type="number" class="form-control" placeholder="4" min="0">
-                        </div>
-                        <br>
-                        <div class="input-group">
-                          <span class="input-group-addon">Width&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                          <input id="windowWidthId" type="number" class="form-control" placeholder="2" min="0">
-                        </div>
-                        <br>
-                        <div class="input-group">
-                          <span class="input-group-addon">Inset&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                          <input id="windowInsetId" type="number" class="form-control" placeholder="0.05" min="0">
-                        </div>
-                        <br>
-                        <div class="input-group">
-                          <span class="input-group-addon">Sill Height</span>
-                          <input id="windowSillHeightId" type="number" class="form-control" placeholder="3" min="0">
-                        </div>
-                      </div>
-                    </div>
-
-
-                    <div class="col-lg-4">
-                        <h4>Types &nbsp;&nbsp;&nbsp; <button id='createNewType' class="label label-warning">Add</button></h4>
-                        <div style=" text-align: left; overflow:auto; height: 250px; background-color:azure">
-                          <div class="container-fluid list-group" id="familyTypes">
-                          </div>
-                        </div>
-                      </div>
-  
-                    <div class="col-lg-4">
-                      <h4>Materials</h4>
-                      <div style="padding-top: 5px; text-align: left;">
-                        <div class="form-group">
-                          <label for="glassPaneMaterialSelId" class="col-lg-5 control-label">
-                            <h5>Glass Pane</h5>
-                          </label>
-                          <div class="col-lg-7">
-                            <select id="glassPaneMaterialSelId" class="form-control">
-                              <option>Default</option>
-                              <option>Glass</option>
-                              <option>Glass, Matte</option>
-                            </select>
-                          </div>
-                        </div>
-                        <br>
-                        <br>
-                        <br>
-                        <br>
-                        <div class="form-group">
-                          <label for="sashMaterialSelId" class="col-sm-5 control-label">
-                            <h5>Sash</h5>
-                          </label>
-                          <div class="col-sm-7">
-                            <select id="sashMaterialSelId" class="form-control">
-                              <option>Default</option>
-                              <option>Metal</option>
-                              <option>Copper</option>
-                              <option>Gold</option>
-                              <option>Maple</option>
-                            </select>
-                          </div>
-                        </div>
-                        <br>
-                        <br>
-                        <br>
-                        <br>
-                        <br>
-                        <div class="input-group">
-                          <span class="input-group-addon">Family Name</span>
-                          <input id="windowFamilyNameId" type="text" class="form-control" placeholder="Double Hung.rfa">
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-
-                  <div class="btn-group btn-lg">
-
-                    <div style="padding-top: 10px;">
-
-                      <button class="btn btn-primary" id="createFamilyBtn">
-                        <span class="glyphicon glyphicon-play"></span>Create
-                      </button>
-                      <button class="btn btn-primary" id="cancelBtn" disabled>
-                        <span class="glyphicon glyphicon-stop"></span>Cancel
-                      </button>
-                    </div>
-                  </div>
-                  <div class="row">
-                      <div style="text-align: left;">
-                        <label id="statusText">
-                          <h4>Progress</h4>
-                        </label>
-                      </div>
-                    </div>
-                    <div class="row">
-                      <div>
-                          <div class="progress progress-striped active">
-                              <div id='familyCreationProgressBar' class="progress-bar progress-bar-success" role="progressbar"
-                                   aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"
-                                   style="width: 0%;">
-                                  <span class="sr-only">40% 完成</span>
-                              </div>
-                          </div>
-                      </div>
-                    </div>                
-                  </div>
-              </div>
-            </div>
-        </div>
-      </div>
-
-      <div class="col-sm-1 fill">
-      </div>
-
-      <div class="col-sm-5 fill">
-        <br />
-        <div>
-          <label>
-            <h4>Output Folder</h4>
-          </label>
-        </div>
-        <div class="panel panel-default fill">
-          <div class="panel-heading" data-toggle="tooltip" style="padding: 0px;">
-            <span id="refreshHubsDestination" class="glyphicon glyphicon-refresh" style="cursor: pointer; display: none"
-              title="Refresh list of files"></span>
-          </div>
-
-          <div id="userHubsDestination">
-            <div style="padding-top: 100px; text-align: center;">
-              <br />
-              <br />
-              <br /> You may also need to provision your<br /> BIM 360 Docs account for this app.<br />
-              <a href="https://aps.autodesk.com/blog/bim-360-docs-provisioning-forge-apps">Learn more</a>.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-    <!-- Modal Provision BIM360  -->
-    <div class="modal fade" id="provisionAccountModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="Cancel">
-              <span aria-hidden="true">&times;</span>
-            </button>
-            <h4 class="modal-title">Thanks for using this sample!</h4>
-          </div>
-          <div class="modal-body">
-            <p>To view your BIM 360 Docs files on this app please authorize my APS Client ID with your BIM 360 Docs
-              Account.
+            <p class="login-description">
+                Transform your natural language descriptions into professional parametric Revit families with our advanced AI technology.
             </p>
-            <p>
-              <button type="button" class="btn btn-info" data-toggle="modal" data-target="#provisionAccountStepsModal">
-                Show me the steps
-                <span class="glyphicon glyphicon-new-window"></span>
-              </button>
-            </p>
-            Use this as APS Client ID:
-            <div class="input-group">
-              <input type="text" readonly="true" aria-describedby="CopyClientID" id="ClientID" class="form-control" value="" />
-              <span class="input-group-addon" style="cursor: pointer" data-clipboard-target="#ClientID" id="CopyClientID">Copy
-                to clipboard</span>
-            </div>
-            And this App Name:
-            <div class="input-group">
-              <input type="text" readonly="true" aria-describedby="CopyAppName" id="AppName" class="form-control" value="Revit Window Family Creation Sample" />
-              <span class="input-group-addon" style="cursor: pointer" data-clipboard-target="#AppName" id="CopyAppName">Copy
-                to clipboard</span>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="provisionAccountSave">Done</button>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Modal Define AppBundle & Activity -->
-    <div class="modal fade" id="defineActivityModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="Cancel"><span
-                aria-hidden="true">&times;</span></button>
-            <h4 class="modal-title" id="myModalLabel">AppBundle & Activity</h4>
-          </div>
-          <div class="modal-body">
-            <div class="alert alert-warning">
-              <center>Define AppBundle &amp; Activity only once.<br />Redefine only when your plugin code change
-                (creates a new version).</center>
-            </div>
-            <div class="form-group">
-              <label for="localBundles">Select a local AppBundle:</label>
-              <select class="form-control" id="localBundles"> </select>
-              <b>Tip:</b> Make sure .ZIP bundles are placed at <b>/bundles/</b> folder
-            </div>
-            <div class="form-group">
-              <label for="engines">Select engine:</label>
-              <select class="form-control" id="engines"> </select>
-            </div>
-            For this sample the .ZIP name is used as suffix to define <b>AppBundle</b> and <b>Activity</b>
-            names. Activities will have the following parameters: <br>
-            &nbsp&nbsp&nbsp&nbsp<b>templateFile:</b> Revit window family template file <br>
-            &nbsp&nbsp&nbsp&nbsp<b>windowParams:</b> Identify the window family type parameters  <br>
-            &nbsp&nbsp&nbsp&nbsp<b>resultFamily:</b> Output Revit Family file, new created Winodw Family <br>
-
-            <div style="text-align: left;">
-              <label id="configText">
-                <h4>Status</h4>
-              </label>
-            </div>
-            <div>
-              <div class="progress progress-striped active">
-                <div id='configProgressBar' width=90% class="progress-bar progress-bar-success" role="progressbar"
-                  aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
-                  <span class="sr-only">40% 完成</span>
+             <div class="demo-access">
+                 <h3><i class="fas fa-sign-in-alt"></i> Sign In</h3>
+                 <p>Access your famAI account to create and manage Revit families</p>
+                 
+                 <form class="login-form" onsubmit="handleLogin(event)">
+                     <div class="form-group">
+                         <input type="text" id="username" name="username" required placeholder="Username or Email">
+                         <i class="fas fa-user form-icon"></i>
+                     </div>
+                     
+                     <div class="form-group">
+                         <input type="password" id="password" name="password" required placeholder="Password">
+                         <i class="fas fa-lock form-icon"></i>
+                         <button type="button" class="password-toggle" onclick="togglePassword()">
+                             <i class="fas fa-eye" id="passwordToggleIcon"></i>
+                         </button>
+                     </div>
+                     
+                     <div class="form-options">
+                         <label class="checkbox-label">
+                             <input type="checkbox" id="rememberMe">
+                             <span class="checkmark"></span>
+                             Remember me
+                         </label>
+                         <a href="#" class="forgot-password" onclick="showForgotPassword()">Forgot password?</a>
+                     </div>
+                     
+                     <button type="submit" class="btn btn-primary btn-block" style="margin-top: 0.75rem; padding: 0.75rem 1rem; font-size: 0.875rem;">
+                         <i class="fas fa-sign-in-alt"></i> Sign In
+                     </button>
+                 </form>
+                 
+                <div class="form-switch">
+                    <p>Don't have an account? <a href="/register.html">Create account</a></p>
                 </div>
-              </div>
+             </div>
+
+             <!-- Registration Form (Hidden by default) -->
+             <div class="demo-access" id="registerForm" style="display: none;">
+                 <h3><i class="fas fa-user-plus"></i> Create Account</h3>
+                 <p>Join famAI to start creating professional Revit families with AI</p>
+                 
+                 <form class="login-form" onsubmit="handleRegister(event)">
+                     <div class="form-group">
+                         <input type="text" id="regName" name="name" required placeholder="Full Name">
+                         <i class="fas fa-user form-icon"></i>
+                     </div>
+                     
+                     <div class="form-group">
+                         <input type="email" id="regEmail" name="email" required placeholder="Email Address">
+                         <i class="fas fa-envelope form-icon"></i>
+                     </div>
+                     
+                     <div class="form-group">
+                         <input type="password" id="regPassword" name="password" required placeholder="Create Password">
+                         <i class="fas fa-lock form-icon"></i>
+                         <button type="button" class="password-toggle" onclick="toggleRegisterPassword()">
+                             <i class="fas fa-eye" id="regPasswordToggleIcon"></i>
+                         </button>
+                     </div>
+                     
+                     <div class="form-group">
+                         <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Confirm Password">
+                         <i class="fas fa-lock form-icon"></i>
+                     </div>
+                     
+                     <div class="form-options">
+                         <label class="checkbox-label">
+                             <input type="checkbox" id="agreeTerms" required>
+                             <span class="checkmark"></span>
+                             I agree to the <a href="#" onclick="showTermsOfService()">Terms of Service</a> and <a href="#" onclick="showPrivacyPolicy()">Privacy Policy</a>
+                         </label>
+                     </div>
+                     
+                     <button type="submit" class="btn btn-primary btn-block" style="margin-top: 0.75rem; padding: 0.75rem 1rem; font-size: 0.875rem;">
+                         <i class="fas fa-user-plus"></i> Create Account
+                     </button>
+                 </form>
+                 
+                 <div class="form-switch">
+                     <p>Already have an account? <a href="#" onclick="showLoginForm()">Sign in</a></p>
+                 </div>
+             </div>
+
+            <div class="divider">
+                <span>or sign in with</span>
+                      </div>
+
+            <div class="auth-providers">
+                 <a href="#" class="auth-provider autodesk" onclick="signInWithAutodesk()">
+                     <img src="/autodesk-logo.png" alt="Autodesk" style="width: 20px; height: 20px; object-fit: contain;">
+                     <span>Continue with Autodesk</span>
+                     <div class="loading-spinner" id="autodeskSpinner"></div>
+                 </a>
+
+                <a href="#" class="auth-provider google" onclick="signInWithGoogle()">
+                    <i class="fab fa-google"></i>
+                    <span>Continue with Google</span>
+                    <div class="loading-spinner" id="googleSpinner"></div>
+                </a>
+
+                <a href="#" class="auth-provider github" onclick="signInWithGitHub()">
+                    <i class="fab fa-github"></i>
+                    <span>Continue with GitHub</span>
+                    <div class="loading-spinner" id="githubSpinner"></div>
+                </a>
+
+                      </div>
+
+
+            <div class="footer-links">
+                <a href="#" onclick="showPrivacyPolicy()">Privacy Policy</a>
+                <a href="#" onclick="showTermsOfService()">Terms of Service</a>
+                <a href="#" onclick="showHelp()">Help & Support</a>
             </div>
-
-
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-primary" id="createAppBundleActivity">Create/Update</button>
-            <button class="btn btn-danger" id="clearAccount">Delete</button>
-          </div>
-
-
         </div>
       </div>
-    </div>
 
-    <!-- Modal Provision BIM360 Help  -->
-    <div class="modal fade" id="provisionAccountStepsModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
-      <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="Cancel">
-              <span aria-hidden="true">&times;</span>
-            </button>
-            <h4 class="modal-title" id="myModalLabel1">Step-by-step guide</h4>
-          </div>
-          <div class="modal-body">
-            <p>To access your BIM 360 Docs files with this app, you need to connect your BIM 360 account with the app.</p>
-            <ol>
-              <li>Log in to
-                <a href="https://bim360enterprise.autodesk.com/" target="_blank">BIM 360 Account Administration
-                </a>. Note that you need account administrator permissions.
-              </li>
-              <li>If you have more than one account, select the account you want to integrate with the app.</li>
-              <li>From the toolbar, select
-                <strong>SETTINGS &gt; Apps &amp; Integrations</strong>.
-                <br />
-                <img src="./res/Step1.png" width="500" />
-              </li>
-              <li>Click the
-                <strong>Add Integration</strong> button.
-                <br />
-                <img src="./res/Step2.png" />
-              </li>
-              <li>Select
-                <strong>BIM 360 Account Administration</strong> and
-                <strong>BIM 360 Docs</strong>, and click
-                <strong>Next</strong>.
-              </li>
-              <li>Select
-                <strong>I’m the developer</strong>, and click
-                <strong>Next</strong>.</li>
-              <li>In the
-                <strong>APS Client ID</strong> and
-                <strong>App Name</strong> fields, enter the APS client ID and app name provided by the app retailer.
-              </li>
-              <li>Select the
-                <strong>I have saved the Account ID information securely</strong> checkbox.</li>
-              <li>Click
-                <strong>Save</strong>.<br />
-                <img src="./res/Step3.png" width="500" />
-              </li>
-              <p></p>
-              <p>Congratulations! You can now access your BIM 360 Docs files.</p>
-            </ol>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-default" data-dismiss="modal">Understood, thanks!</button>
-          </div>
-        </div>
-      </div>
-    </div>
     <script>
-        new Clipboard('.input-group-addon');
+        // Form handling functions
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+            
+            showNotification('Signing in...', 'info');
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Login successful! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/famai';
+                    }, 1000);
+                } else {
+                    showNotification(data.error || 'Login failed', 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showNotification('Login failed. Please try again.', 'error');
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const agreeTerms = document.getElementById('agreeTerms').checked;
+            
+            if (password !== confirmPassword) {
+                showNotification('Passwords do not match', 'error');
+                return;
+            }
+            
+            if (!agreeTerms) {
+                showNotification('Please agree to the terms and conditions', 'error');
+                return;
+            }
+            
+            showNotification('Creating account...', 'info');
+            
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password,
+                        firstName: name.split(' ')[0] || '',
+                        lastName: name.split(' ').slice(1).join(' ') || '',
+                        displayName: name,
+                        role: 'other'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Account created successfully! Please login.', 'success');
+                    setTimeout(() => {
+                        showLoginForm();
+                    }, 2000);
+                } else {
+                    showNotification(data.error || 'Registration failed', 'error');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                showNotification('Registration failed. Please try again.', 'error');
+            }
+        }
+
+        function showLoginForm() {
+            document.querySelector('.demo-access:not(#registerForm)').style.display = 'block';
+            document.getElementById('registerForm').style.display = 'none';
+        }
+
+        function showRegisterForm() {
+            document.querySelector('.demo-access:not(#registerForm)').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+        }
+
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.getElementById('passwordToggleIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+
+        function toggleRegisterPassword() {
+            const passwordInput = document.getElementById('regPassword');
+            const toggleIcon = document.getElementById('regPasswordToggleIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+
+        function showForgotPassword() {
+            showNotification('Password reset functionality will be implemented soon', 'info');
+        }
+
+        // Authentication handlers (placeholders for now)
+        function accessDemo() {
+            showLoading('demo');
+            showNotification('Launching famAI demo...', 'info');
+            setTimeout(() => {
+                window.location.href = '/famai';
+            }, 1000);
+        }
+
+        function signInWithAutodesk() {
+            showLoading('autodesk');
+            showNotification('Connecting to Autodesk...', 'info');
+            // Placeholder for Autodesk OAuth
+            setTimeout(() => {
+                hideLoading('autodesk');
+                showNotification('Autodesk authentication will be implemented soon', 'warning');
+            }, 2000);
+        }
+
+        function signInWithGoogle() {
+            showLoading('google');
+            showNotification('Connecting to Google...', 'info');
+            // Placeholder for Google OAuth
+            setTimeout(() => {
+                hideLoading('google');
+                showNotification('Google authentication will be implemented soon', 'warning');
+            }, 2000);
+        }
+
+        function signInWithGitHub() {
+            showLoading('github');
+            showNotification('Connecting to GitHub...', 'info');
+            // Placeholder for GitHub OAuth
+            setTimeout(() => {
+                hideLoading('github');
+                showNotification('GitHub authentication will be implemented soon', 'warning');
+            }, 2000);
+        }
+
+
+        function showLoading(provider) {
+            const spinner = document.getElementById(provider + 'Spinner');
+            if (spinner) {
+                spinner.style.display = 'block';
+            }
+            
+            // Disable all auth buttons
+            document.querySelectorAll('.auth-provider').forEach(btn => {
+                btn.style.pointerEvents = 'none';
+                btn.style.opacity = '0.6';
+            });
+        }
+
+        function hideLoading(provider) {
+            const spinner = document.getElementById(provider + 'Spinner');
+            if (spinner) {
+                spinner.style.display = 'none';
+            }
+            
+            // Re-enable all auth buttons
+            document.querySelectorAll('.auth-provider').forEach(btn => {
+                btn.style.pointerEvents = 'auto';
+                btn.style.opacity = '1';
+            });
+        }
+
+        // Notification system
+        function showNotification(message, type = 'info') {
+            // Remove existing notifications
+            const existingNotifications = document.querySelectorAll('.notification-toast');
+            existingNotifications.forEach(notification => notification.remove());
+
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification-toast notification-${type}`;
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <i class="fas fa-${getNotificationIcon(type)}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+
+            // Add styles
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: var(--surface-color);
+                border: 1px solid var(--border-color);
+                border-radius: var(--radius-lg);
+                padding: 1rem 1.5rem;
+                box-shadow: var(--shadow-lg);
+                z-index: 1000;
+                animation: slideInRight 0.3s ease-out;
+                max-width: 400px;
+            `;
+
+            document.body.appendChild(notification);
+
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.3s ease-in';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        function getNotificationIcon(type) {
+            const icons = {
+                'info': 'info-circle',
+                'success': 'check-circle',
+                'warning': 'exclamation-triangle',
+                'error': 'times-circle'
+            };
+            return icons[type] || 'info-circle';
+        }
+
+        // Footer link handlers
+        function showPrivacyPolicy() {
+            showNotification('Privacy Policy - This will open a modal or redirect to privacy policy page', 'info');
+        }
+
+        function showTermsOfService() {
+            showNotification('Terms of Service - This will open a modal or redirect to terms page', 'info');
+        }
+
+        function showHelp() {
+            showNotification('Help & Support - This will open a help modal or redirect to support page', 'info');
+        }
+
+        // Add some interactive effects
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add hover effects to auth providers
+            document.querySelectorAll('.auth-provider').forEach(provider => {
+                provider.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-2px)';
+                });
+                
+                provider.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+
+            // Add click effect to demo button (only if it's not a form button)
+            const demoBtn = document.querySelector('.demo-access .btn:not([type="submit"])');
+            if (demoBtn) {
+                demoBtn.addEventListener('click', function() {
+                    this.style.transform = 'scale(0.98)';
+                    setTimeout(() => {
+                        this.style.transform = 'scale(1)';
+                    }, 150);
+                });
+            }
+        });
     </script>
-    
 </body>
-<iframe id="hiddenFrame" style="visibility: hidden; display: none" />
 </html>

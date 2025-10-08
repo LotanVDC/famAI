@@ -127,13 +127,24 @@ class BIMLLMInterface {
      */
     async loadUserProfile() {
         try {
-            const response = await fetch('/api/aps/user/profile');
+            const response = await fetch('/api/auth/profile');
             if (response.ok) {
-                const profile = await response.json();
-                document.getElementById('userName').textContent = profile.name || 'User';
+                const data = await response.json();
+                if (data.success) {
+                    const user = data.user;
+                    document.getElementById('userName').textContent = user.profile.displayName || user.email;
+                } else {
+                    // User not authenticated, redirect to login
+                    window.location.href = '/';
+                }
+            } else {
+                // User not authenticated, redirect to login
+                window.location.href = '/';
             }
         } catch (error) {
             console.error('Failed to load user profile:', error);
+            // User not authenticated, redirect to login
+            window.location.href = '/';
         }
     }
 
@@ -751,12 +762,16 @@ class BIMLLMInterface {
                     this.updateStatus('ready', 'Family created successfully!');
                     this.addMessageToChat('assistant', 
                         `Family creation completed! 
-                        <div style="margin-top: 10px;">
-                            <a href="/api/famai/download/${workitemId}" target="_blank" class="btn btn-primary" style="margin-right: 10px;">📥 Download RFA</a>
-                            <a href="/viewer?workitemId=${workitemId}" target="_blank" class="btn btn-secondary">👁️ View in 3D</a>
+                        <div style=\"margin-top: 10px;\">
+                            <a href=\"/api/bim-llm/v1/download/${workitemId}\" target=\"_blank\" class=\"btn btn-primary\" style=\"margin-right: 10px;\">📥 Download RFA</a>
+                            <a href=\"/viewer?workitemId=${workitemId}\" target=\"_blank\" class=\"btn btn-secondary\">👁️ View in 3D</a>
                         </div>`
                     );
                     this.hideProgress();
+
+                    // Auto-refresh Available Models immediately and select the new item
+                    this.autoSelectWorkitemId = workitemId;
+                    await this.loadModels();
                 } else if (status.status === 'failed') {
                     this.updateStatus('error', 'Family creation failed');
                     this.addMessageToChat('assistant', 'Family creation failed. Please try refining the design.');
@@ -1209,9 +1224,24 @@ class BIMLLMInterface {
         console.log('Settings updated');
     }
 
-    logout() {
+    async logout() {
         if (confirm('Are you sure you want to logout?')) {
-            window.location.href = '/api/aps/logout';
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    // Force logout even if API call fails
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                // Force logout even if API call fails
+                window.location.href = '/';
+            }
         }
     }
 
@@ -1587,12 +1617,32 @@ class BIMLLMInterface {
      */
     async loadModels() {
         try {
-            const response = await fetch('/api/famai/v1/models');
+            console.log('Loading models from /api/bim-llm/v1/models');
+            const response = await fetch('/api/bim-llm/v1/models');
             const data = await response.json();
+            
+            console.log('Models response:', data);
             
             if (data.success) {
                 this.models = data.models;
+                console.log(`Loaded ${this.models.length} models`);
                 this.renderModels();
+
+                // If we have a newly created workitem, select it and scroll into view
+                if (this.autoSelectWorkitemId) {
+                    const latest = this.models.find(m => m.workitemId === this.autoSelectWorkitemId);
+                    if (latest) {
+                        this.selectedModel = latest;
+                        const node = document.querySelector(`[data-workitem-id="${latest.workitemId}"]`);
+                        if (node) {
+                            node.classList.add('selected');
+                            node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                        const downloadBtn = document.getElementById('downloadModelBtn');
+                        if (downloadBtn) downloadBtn.disabled = false;
+                    }
+                    this.autoSelectWorkitemId = null;
+                }
             } else {
                 console.error('Failed to load models:', data.error);
             }
@@ -1606,27 +1656,40 @@ class BIMLLMInterface {
      */
     renderModels() {
         const modelList = document.getElementById('modelList');
-        const noModels = document.getElementById('noModels');
-        const viewModelBtn = document.getElementById('viewModelBtn');
-        
-        if (this.models.length === 0) {
+        let noModels = document.getElementById('noModels');
+        const downloadModelBtn = document.getElementById('downloadModelBtn');
+
+        if (!modelList) {
+            console.error('Model list container not found');
+            return;
+        }
+
+        // Ensure placeholder exists
+        if (!noModels) {
+            noModels = document.createElement('div');
+            noModels.id = 'noModels';
+            noModels.className = 'no-models';
+            noModels.innerHTML = '<i class="fas fa-info-circle"></i><p>No models available yet. Create a family first!</p>';
+        }
+
+        if (!Array.isArray(this.models) || this.models.length === 0) {
             noModels.style.display = 'block';
             modelList.innerHTML = '';
             modelList.appendChild(noModels);
-            viewModelBtn.disabled = true;
+            if (downloadModelBtn) downloadModelBtn.disabled = true;
             return;
         }
-        
+
         noModels.style.display = 'none';
         modelList.innerHTML = '';
-        
+
         this.models.forEach(model => {
             const modelItem = this.createModelItem(model);
             modelList.appendChild(modelItem);
         });
         
-        // Update view button state
-        viewModelBtn.disabled = !this.selectedModel;
+        // Update download button state
+        if (downloadModelBtn) downloadModelBtn.disabled = !this.selectedModel;
     }
 
     /**
@@ -1679,49 +1742,42 @@ class BIMLLMInterface {
         
         this.selectedModel = model;
         
-        // Update view button
-        const viewModelBtn = document.getElementById('viewModelBtn');
-        viewModelBtn.disabled = false;
+        // Update download button
+        const downloadModelBtn = document.getElementById('downloadModelBtn');
+        if (downloadModelBtn) downloadModelBtn.disabled = false;
         
         console.log('Selected model:', model);
     }
 
     /**
-     * Open the viewer with the selected model
+     * Download the selected model RFA
      */
-    async openViewer() {
+    async downloadSelected() {
         if (!this.selectedModel) {
             alert('Please select a model first');
             return;
         }
-        
         try {
-            // Show viewer container
-            const viewerContainer = document.getElementById('viewerContainer');
-            const viewerTitle = document.getElementById('viewerTitle');
-            const viewerLoading = document.getElementById('viewerLoading');
+            const workitemId = this.selectedModel.workitemId;
+            const downloadUrl = this.selectedModel.downloadUrl;
             
-            viewerContainer.classList.add('active');
-            viewerTitle.textContent = this.selectedModel.familyName;
-            viewerLoading.style.display = 'block';
+            console.log('Downloading model:', workitemId, 'URL:', downloadUrl);
             
-            // Get model details
-            const response = await fetch(`/api/famai/v1/models/${this.selectedModel.workitemId}`);
-            const data = await response.json();
-            
-            if (data.success) {
-                const model = data.model;
-                
-                // Initialize APS Viewer
-                await this.initializeViewer(model);
+            // If we have a direct download URL, use it
+            if (downloadUrl && downloadUrl.startsWith('http')) {
+                window.open(downloadUrl, '_blank');
             } else {
-                throw new Error(data.error || 'Failed to get model details');
+                // Otherwise use the app endpoint
+                const link = document.createElement('a');
+                link.href = `/api/bim-llm/v1/download/${encodeURIComponent(workitemId)}`;
+                link.setAttribute('download', '');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             }
-            
         } catch (error) {
-            console.error('Error opening viewer:', error);
-            alert('Failed to open viewer: ' + error.message);
-            this.closeViewer();
+            console.error('Error starting download:', error);
+            alert('Failed to start download: ' + error.message);
         }
     }
 
@@ -1932,6 +1988,7 @@ function logout() {
     }
 }
 
+
 function useRefinementSuggestion(type) {
     const suggestions = {
         'dimensions': 'Adjust the dimensions to be more standard',
@@ -1955,14 +2012,32 @@ function showExamples() {
 }
 
 function refreshModels() {
+    console.log('Refresh models called');
+    const btn = document.getElementById('refreshModelsBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('is-loading');
+    }
     if (window.bimLLMInterface) {
-        window.bimLLMInterface.loadModels();
+        console.log('Calling loadModels...');
+        window.bimLLMInterface.loadModels().finally(() => {
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('is-loading');
+            }
+        });
+    } else {
+        console.error('bimLLMInterface not available');
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('is-loading');
+        }
     }
 }
 
-function openViewer() {
+function downloadSelected() {
     if (window.bimLLMInterface) {
-        window.bimLLMInterface.openViewer();
+        window.bimLLMInterface.downloadSelected();
     }
 }
 

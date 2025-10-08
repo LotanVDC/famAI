@@ -114,11 +114,11 @@
                             </div>
                         </div>
                         <div class="model-controls">
-                            <button class="btn btn-sm btn-outline" onclick="refreshModels()">
+                            <button type="button" class="btn btn-sm btn-outline" onclick="refreshModels()" id="refreshModelsBtn">
                                 <i class="fas fa-sync-alt"></i> Refresh
                             </button>
-                            <button class="btn btn-sm btn-primary" onclick="openViewer()" id="viewModelBtn" disabled>
-                                <i class="fas fa-eye"></i> View Selected
+                            <button type="button" class="btn btn-sm btn-primary" onclick="downloadSelected()" id="downloadModelBtn" disabled>
+                                <i class="fas fa-download"></i> Download Selected
                             </button>
                         </div>
                     </div>

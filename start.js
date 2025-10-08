@@ -23,11 +23,25 @@ const path = require('path');
 const express = require('express');
 const cookieSession = require('cookie-session');
 
+// Initialize MongoDB connection
+const databaseManager = require('./config/database');
+
 const PORT = process.env.PORT || 3000;
 const config = require('./config');
 if (config.credentials.client_id == null || config.credentials.client_secret == null) {
     console.error('Missing APS_CLIENT_ID or APS_CLIENT_SECRET env. variables.');
     return;
+}
+
+// Initialize database connection
+async function initializeDatabase() {
+    try {
+        await databaseManager.connect();
+        console.log('✅ Database initialized successfully');
+    } catch (error) {
+        console.error('❌ Database initialization failed:', error);
+        process.exit(1);
+    }
 }
 
 if (!String.prototype.format) {
@@ -57,16 +71,31 @@ app.use('/api/aps', require('./routes/user'));
 app.use('/api/aps', require('./routes/da4revit'));
 app.use('/api/aps', require('./routes/daconfigure'));
 
+// Authentication routes
+app.use('/api/auth', require('./routes/auth'));
+
+// Family management routes
+app.use('/api/families', require('./routes/families'));
+
 // famAI routes
 app.use('/api/famai', require('./routes/famai'));
 
+// BIM-LLM routes
+app.use('/api/bim-llm', require('./routes/bim-llm'));
+
 // Viewer routes
 app.use('/api/viewer', require('./routes/viewer'));
+
+// Serve login page at root
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Serve famAI interface
 app.get('/famai', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'famai.html'));
 });
+
 
 // Serve BIM-LLM interface (legacy, redirects to famAI)
 app.get('/bim-llm', (req, res) => {
@@ -100,4 +129,46 @@ global.MyApp.SocketIo.on('connection', function(socket){
 })
 
 
-server.listen(PORT, () => { console.log(`Server listening on port ${PORT}`); });
+// Start server after database initialization
+async function startServer() {
+    try {
+        await initializeDatabase();
+        
+        server.listen(PORT, () => { 
+            console.log(`🚀 Server listening on port ${PORT}`);
+            console.log(`📊 Database: ${databaseManager.getStatus().name}`);
+            console.log(`🔗 Access: http://localhost:${PORT}`);
+        });
+    } catch (error) {
+        console.error('❌ Failed to start server:', error);
+        process.exit(1);
+    }
+}
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+    console.log('\n🛑 Received SIGINT, shutting down gracefully...');
+    try {
+        await databaseManager.disconnect();
+        console.log('✅ Database disconnected');
+        process.exit(0);
+    } catch (error) {
+        console.error('❌ Error during shutdown:', error);
+        process.exit(1);
+    }
+});
+
+process.on('SIGTERM', async () => {
+    console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
+    try {
+        await databaseManager.disconnect();
+        console.log('✅ Database disconnected');
+        process.exit(0);
+    } catch (error) {
+        console.error('❌ Error during shutdown:', error);
+        process.exit(1);
+    }
+});
+
+// Start the server
+startServer();

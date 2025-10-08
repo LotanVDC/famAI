@@ -13,6 +13,9 @@ const QAGateway = require('../services/QAGateway');
 const { OAuth } = require('./common/oauth');
 const { designAutomation } = require('../config');
 const config = require('../config');
+const Family = require('../models/Family');
+const User = require('../models/User');
+const Session = require('../models/Session');
 
 let router = express.Router();
 
@@ -26,7 +29,7 @@ const activeSessions = new Map();
 const workitemQueue = new Map();
 
 /////////////////////////////////////////////////////////////////////
-// Middleware for obtaining tokens
+// Middleware for obtaining tokens and user authentication
 /////////////////////////////////////////////////////////////////////
 router.use(async (req, res, next) => {
     // Skip authentication for testing endpoints
@@ -34,6 +37,27 @@ router.use(async (req, res, next) => {
         return next();
     }
     
+    // Check if user is authenticated
+    const userId = req.session?.userId;
+    if (!userId) {
+        return res.status(401).json({ 
+            success: false,
+            error: 'User authentication required' 
+        });
+    }
+    
+    // Get user from database
+    const user = await User.findById(userId);
+    if (!user) {
+        return res.status(404).json({ 
+            success: false,
+            error: 'User not found' 
+        });
+    }
+    
+    req.user = user;
+    
+    // Get APS OAuth tokens
     const oauth = new OAuth(req.session);
     let credentials = await oauth.getInternalToken();
     let oauth_client = oauth.getClient();
@@ -43,7 +67,10 @@ router.use(async (req, res, next) => {
         req.oauth_token = credentials;
         next();
     } else {
-        res.status(401).json({ error: 'Authentication required' });
+        res.status(401).json({ 
+            success: false,
+            error: 'APS authentication required' 
+        });
     }
 });
 
@@ -162,6 +189,57 @@ router.post('/create', async (req, res) => {
             ...sessionData,
             status: 'ready'
         });
+        
+        // Create family record in MongoDB
+        let savedFamily = null;
+        try {
+            // Ensure SIR data is properly structured
+            const sirData = { ...sirResult.sir };
+            
+            // Fix familyParameters if it's a string instead of an array
+            if (sirData.parameters && sirData.parameters.familyParameters) {
+                if (typeof sirData.parameters.familyParameters === 'string') {
+                    try {
+                        sirData.parameters.familyParameters = JSON.parse(sirData.parameters.familyParameters);
+                    } catch (e) {
+                        console.warn('Failed to parse familyParameters string, using empty array');
+                        sirData.parameters.familyParameters = [];
+                    }
+                }
+            }
+            
+            const family = new Family({
+                name: sirData.familyMetadata.familyName || 'Generated Family',
+                description: sirData.familyMetadata.description || '',
+                category: sirData.familyMetadata.category || 'Generic',
+                createdBy: req.user._id,
+                sessionId: sessionId || 'create-session',
+                originalPrompt: prompt,
+                sir: sirData,
+                generatedCode: {
+                    python: codeResult.code,
+                    metadata: codeResult.metadata
+                },
+                qaValidation: qaResult,
+                status: 'draft'
+            });
+            
+            savedFamily = await family.save();
+            
+            // Update session with family ID
+            if (sessionId) {
+                const session = await Session.findOne({ sessionId: sessionId });
+                if (session) {
+                    await session.updateCurrentFamily(family._id);
+                }
+            }
+            
+            console.log('Family saved to database:', family._id);
+            
+        } catch (dbError) {
+            console.error('Error saving family to database:', dbError);
+            // Continue with response even if database save fails
+        }
         
         res.json({
             success: true,
@@ -571,8 +649,54 @@ router.get('/download/:workitemId', async (req, res) => {
                     console.warn('Could not start translation for viewer:', translationError.message);
                 }
                 
-                console.log('Redirecting to RFA download URL:', downloadUrl);
-                return res.redirect(downloadUrl);
+                console.log('Downloading RFA file from APS URL:', downloadUrl);
+                
+                // Store the working download URL in the database for future use
+                try {
+                    await Family.findOneAndUpdate(
+                        { 'apsExecution.workitemId': workitemId },
+                        {
+                            $set: {
+                                'files.rfaFile.downloadUrl': downloadUrl,
+                                'files.rfaFile.filename': `Generated_Window_${workitemId}.rfa`,
+                                'status': 'ready',
+                                'apsExecution.status': 'success',
+                                'apsExecution.completedAt': new Date()
+                            }
+                        }
+                    );
+                    console.log('Stored REAL download URL in database for workitem:', workitemId);
+                    console.log('  - Download URL:', downloadUrl);
+                } catch (dbError) {
+                    console.warn('Failed to store download URL in database:', dbError.message);
+                }
+                
+                // Fetch the RFA file from the APS URL and stream it
+                try {
+                    const rfaResponse = await fetch(downloadUrl);
+                    
+                    if (!rfaResponse.ok) {
+                        throw new Error(`Failed to download RFA file: ${rfaResponse.status} ${rfaResponse.statusText}`);
+                    }
+                    
+                    const rfaContent = await rfaResponse.arrayBuffer();
+                    const rfaBuffer = Buffer.from(rfaContent);
+                    
+                    console.log('Downloaded RFA file size:', rfaBuffer.length, 'bytes');
+                    
+                    // Set headers for file download
+                    res.setHeader('Content-Type', 'application/octet-stream');
+                    res.setHeader('Content-Disposition', `attachment; filename="Generated_Window_${workitemId}.rfa"`);
+                    res.setHeader('Content-Length', rfaBuffer.length);
+                    
+                    // Send the RFA file
+                    return res.send(rfaBuffer);
+                    
+                } catch (fetchError) {
+                    console.error('Error fetching RFA file from APS URL:', fetchError);
+                    // Fallback to redirect
+                    return res.redirect(downloadUrl);
+                }
                 
             } catch (error) {
                 console.error('Error getting real APS download URL:', error);
@@ -1158,7 +1282,7 @@ router.post('/v1/execute', async (req, res) => {
         }
 
         // Use the real APS family creation endpoint
-        const apsResponse = await createFamilyWithAPS(apsParams, targetFolder, req.oauth_token);
+        const apsResponse = await createFamilyWithAPS(apsParams, targetFolder, req.oauth_token, req.user._id, sessionId);
         
         if (!apsResponse.success) {
             throw new Error(apsResponse.error || 'Failed to create APS workitem');
@@ -1368,8 +1492,30 @@ router.get('/v1/download/:workitemId', async (req, res) => {
     try {
         const workitemId = req.params.workitemId;
         
-        // Get workitem data
-        const workitemData = workitemQueue.get(workitemId);
+        // Get workitem data from memory queue first
+        let workitemData = workitemQueue.get(workitemId);
+        
+        // If not found in memory, try to get from database
+        if (!workitemData) {
+            console.log('Workitem not found in memory, checking database...');
+            const family = await Family.findOne({ 
+                'apsExecution.workitemId': workitemId 
+            });
+            
+            if (family && family.apsExecution) {
+                workitemData = {
+                    id: workitemId,
+                    status: family.apsExecution.status || 'pending',
+                    bucketKey: family.apsExecution.bucketKey,
+                    outputObjectKey: family.apsExecution.outputObjectKey,
+                    params: family.sir,
+                    apsParams: family.sir,
+                    isRealAPS: !workitemId.startsWith('mock_')
+                };
+                console.log('Found workitem in database:', workitemId);
+            }
+        }
+        
         if (!workitemData) {
             return res.status(404).json({
                 error: 'Workitem not found'
@@ -1378,23 +1524,24 @@ router.get('/v1/download/:workitemId', async (req, res) => {
 
         console.log('Workitem data for download:', JSON.stringify(workitemData, null, 2));
 
-        if (workitemData.status !== 'success') {
+        // Allow download for 'success' and 'inprogress' status (in case APS is still processing)
+        if (workitemData.status !== 'success' && workitemData.status !== 'inprogress') {
             return res.status(400).json({
-                error: 'Workitem not completed successfully',
+                error: 'Workitem not ready for download',
                 status: workitemData.status
             });
         }
 
         console.log('Downloading RFA file for workitem:', workitemId);
         
-        // Handle simulated APS workitems (prefixed with 'aps_')
-        if (workitemId.startsWith('aps_')) {
-            console.log('Generating RFA file for simulated workitem');
+        // Handle simulated APS workitems (prefixed with 'aps_') or mock workitems
+        if (workitemId.startsWith('aps_') || workitemId.startsWith('mock_')) {
+            console.log('Generating RFA file for simulated/mock workitem');
             
             // Get parameters from workitem data
             const params = workitemData.params || workitemData.apsParams;
             if (!params) {
-            return res.status(500).json({
+                return res.status(500).json({
                     error: 'No parameters found for workitem'
                 });
             }
@@ -1478,45 +1625,65 @@ router.get('/v1/models', async (req, res) => {
     try {
         console.log('Listing available models for viewer selection');
         
-        // Import the APS service
-        const apsService = require('../services/apsService');
+        const userId = req.user._id;
+        const { limit = 20, category, status } = req.query;
         
-        // Get all workitems that have completed successfully
-        const completedWorkitems = [];
-        
-        for (const [workitemId, workitemData] of workitemQueue.entries()) {
-            if (workitemData.status === 'success' && workitemData.bucketKey && workitemData.outputObjectKey) {
-                completedWorkitems.push({
-                    workitemId: workitemId,
-                    fileName: workitemData.outputObjectKey.split('/').pop() || 'Generated Window.rfa',
-                    bucketKey: workitemData.bucketKey,
-                    objectKey: workitemData.outputObjectKey,
-                    createdAt: workitemData.createdAt,
-                    sessionId: workitemData.sessionId,
-                    params: workitemData.params,
-                    familyName: workitemData.params?.FileName || 'Generated Window',
-                    dimensions: {
-                        width: workitemData.params?.WindowParams?.Types?.[0]?.width || 200,
-                        height: workitemData.params?.WindowParams?.Types?.[0]?.height || 200
-                    }
-                });
-            }
+        // Build query for user's families
+        const query = { createdBy: userId };
+
+        // If explicit status filter provided, apply it; otherwise include all statuses
+        if (typeof status === 'string' && status.length > 0) {
+            query.status = status;
         }
         
-        // Sort by creation date (newest first)
-        completedWorkitems.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        if (category) {
+            query.category = category;
+        }
         
-        console.log(`Found ${completedWorkitems.length} completed models`);
+        // Get families from database
+        const families = await Family.find(query)
+            .sort({ createdAt: -1 })
+            .limit(parseInt(limit))
+            .select('name category status createdAt parameters files apsExecution originalPrompt');
+        
+        // Transform families to match expected format
+        const models = families.map(family => ({
+            familyId: family._id,
+            workitemId: family.apsExecution?.workitemId || family._id,
+            fileName: family.files?.rfaFile?.filename || `${family.name}.rfa`,
+            familyName: family.name,
+            category: family.category,
+            status: family.status,
+            createdAt: family.createdAt,
+            originalPrompt: family.originalPrompt,
+            dimensions: {
+                width: family.parameters?.width || 200,
+                height: family.parameters?.height || 200,
+                depth: family.parameters?.depth || 100
+            },
+            // Use the stored download URL if available, otherwise use the app endpoint
+            downloadUrl: family.files?.rfaFile?.downloadUrl || `/api/bim-llm/v1/download/${family.apsExecution?.workitemId || family._id}`,
+            viewerUrl: family.viewerUrl,
+            downloadCount: family.stats?.downloadCount || 0,
+            viewCount: family.stats?.viewCount || 0
+        }));
+        
+        console.log(`Found ${models.length} models for user ${userId}`);
 
         res.json({
             success: true,
-            models: completedWorkitems,
-            count: completedWorkitems.length
+            models: models,
+            count: models.length,
+            user: {
+                id: userId,
+                totalFamilies: await Family.countDocuments({ createdBy: userId })
+            }
         });
         
     } catch (error) {
         console.error('Error listing models:', error);
         res.status(500).json({
+            success: false,
             error: 'Failed to list models',
             details: error.message
         });
@@ -1776,6 +1943,9 @@ function convertSIRToAPSParams(sir, originalPrompt = '') {
         function parseLabeled(text, labels, opts = {}) {
             const maxGap = opts.maxGap || 25;
             const labelRegex = labels.join('|');
+            // Do not allow the regex to skip across commas/newlines to avoid
+            // capturing the wrong dimension (e.g., width value for height).
+            const gapPattern = `[^,\n]{0,${maxGap}}`;
 
             // Try feet-inches composite first (applies mostly to width/height)
             const fi = parseFeetInches(text);
@@ -1784,8 +1954,8 @@ function convertSIRToAPSParams(sir, originalPrompt = '') {
             // Helper to build and apply a pattern capturing numeric value and unit
             const tryPattern = (unitRe, conv, before = true) => {
                 const re = before
-                    ? new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${unitRe}\\b[\\s\\S]{0,${maxGap}}(?:${labelRegex})`)
-                    : new RegExp(`(?:${labelRegex})[\\s\\S]{0,${maxGap}}(\\d+(?:\\.\\d+)?)\\s*${unitRe}\\b`);
+                    ? new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${unitRe}\\b${gapPattern}(?:${labelRegex})`)
+                    : new RegExp(`(?:${labelRegex})${gapPattern}(\\d+(?:\\.\\d+)?)\\s*${unitRe}\\b`);
                 const m = text.match(re);
                 if (m) return conv(parseFloat(m[1]));
                 return null;
@@ -1794,8 +1964,8 @@ function convertSIRToAPSParams(sir, originalPrompt = '') {
             // Numeric without explicit unit near label (e.g., "0.75 from floor")
             const tryUnitless = (assumeConv, before = true) => {
                 const re = before
-                    ? new RegExp(`(\\d+(?:\\.\\d+)?)\\b[\\s\\S]{0,${maxGap}}(?:${labelRegex})`)
-                    : new RegExp(`(?:${labelRegex})[\\s\\S]{0,${maxGap}}(\\d+(?:\\.\\d+)?)\\b`);
+                    ? new RegExp(`(\\d+(?:\\.\\d+)?)\\b${gapPattern}(?:${labelRegex})`)
+                    : new RegExp(`(?:${labelRegex})${gapPattern}(\\d+(?:\\.\\d+)?)\\b`);
                 const m = text.match(re);
                 if (m) return assumeConv(parseFloat(m[1]));
                 return null;
@@ -1840,7 +2010,40 @@ function convertSIRToAPSParams(sir, originalPrompt = '') {
         // Parse from prompt (mm, cm, m, in, ft, ft-in)
         const widthFt  = parseLabeled(prompt, ['width', 'wide'])  ?? (typeof widthSirParam  === 'number' ? widthSirParam  : 2.0);
         const heightFt = parseLabeled(prompt, ['height', 'high']) ?? (typeof heightSirParam === 'number' ? heightSirParam : 4.0);
-        const sillFt   = parseLabeled(prompt, ['sill', 'from\s+floor', 'above\s+floor', 'floor\s+to']) ?? (typeof sillSirParam === 'number' ? sillSirParam : 3.0);
+
+        // Dedicated handling for sill height like "750 mm from floor" or unitless "0.75 from floor"
+        function parseSill(text){
+            const labels = '(?:sill(?:\\s*height)?|from\\s+floor|above\\s+floor|to\\s+floor|aff)';
+            const hasMetric = /(mm|millimet|cm|centimet|\bm\b|met(er|re))/i.test(text);
+            const gapPattern = '[^,\n]{0,25}';
+
+            // explicit unit before label
+            const unitSpecs = [
+                { unit: '(?:mm|millimet(?:er|re)s?)', conv: mmToFt },
+                { unit: '(?:cm|centimet(?:er|re)s?)', conv: cmToFt },
+                { unit: '(?:m|met(?:er|re)s?)',       conv: mToFt  },
+                { unit: '(?:in|inch|inches|")',      conv: inToFt },
+                { unit: '(?:ft|foot|feet|\')',       conv: ftToFt }
+            ];
+            for(const spec of unitSpecs){
+                let re = new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${spec.unit}\\b${gapPattern}(?:${labels})`);
+                let m = text.match(re);
+                if(m) return spec.conv(parseFloat(m[1]));
+                re = new RegExp(`(?:${labels})${gapPattern}(\\d+(?:\\.\\d+)?)\\s*${spec.unit}\\b`);
+                m = text.match(re);
+                if(m) return spec.conv(parseFloat(m[1]));
+            }
+            // unitless near label
+            let reU = new RegExp(`(\\d+(?:\\.\\d+)?)\\b${gapPattern}(?:${labels})`);
+            let mu = text.match(reU);
+            if(mu) return (hasMetric ? mToFt : ftToFt)(parseFloat(mu[1]));
+            reU = new RegExp(`(?:${labels})${gapPattern}(\\d+(?:\\.\\d+)?)\\b`);
+            mu = text.match(reU);
+            if(mu) return (hasMetric ? mToFt : ftToFt)(parseFloat(mu[1]));
+            return null;
+        }
+
+        const sillFt   = parseSill(prompt) ?? parseLabeled(prompt, ['sill', 'from\s+floor', 'above\s+floor', 'floor\s+to', 'aff']) ?? (typeof sillSirParam === 'number' ? sillSirParam : 3.0);
         const insetFt  = parseLabeled(prompt, ['inset', 'depth', 'frame\s+depth']) ?? (typeof insetSirParam === 'number' ? insetSirParam : 0.05);
 
         console.log(`Unit parsing → width: ${widthFt} ft, height: ${heightFt} ft, sill: ${sillFt} ft, inset: ${insetFt} ft`);
@@ -1850,6 +2053,7 @@ function convertSIRToAPSParams(sir, originalPrompt = '') {
             FileName: `${familyName}.rfa`,
             FamilyType: 1, // WINDOW type
             WindowParams: {
+                unitsContext: { lengthUnit: 'ft' },
                 WindowStyle: windowType,
                 GlassPaneMaterial: glassPaneMaterial,
                 SashMaterial: sashMaterial,
@@ -1895,7 +2099,7 @@ function convertSIRToAPSParams(sir, originalPrompt = '') {
 /**
  * Create family using simulated APS Design Automation for local downloads
  */
-async function createFamilyWithAPS(params, targetFolder, oauthToken) {
+async function createFamilyWithAPS(params, targetFolder, oauthToken, userId, sessionId) {
     try {
         console.log('Creating family with APS:', params);
         
@@ -1946,6 +2150,36 @@ async function createFamilyWithAPS(params, targetFolder, oauthToken) {
                 
                 console.log('Storing workitem data:', JSON.stringify(workitemData, null, 2));
                 workitemQueue.set(familyCreatedRes.body.id, workitemData);
+
+                // Persist APS identifiers to Family document so it appears in Available Models immediately
+                try {
+                    // Find the most recent family for this user and session
+                    const family = await Family.findOne({ 
+                        createdBy: userId, 
+                        sessionId: sessionId 
+                    }).sort({ createdAt: -1 });
+                    
+                    if (family) {
+                        await Family.findByIdAndUpdate(family._id, {
+                            $set: {
+                                status: 'inprogress',
+                                'apsExecution.workitemId': familyCreatedRes.body.id,
+                                'apsExecution.bucketKey': familyCreatedRes.body.bucketKey,
+                                'apsExecution.outputObjectKey': familyCreatedRes.body.outputObjectKey,
+                                'apsExecution.status': familyCreatedRes.body.status || 'pending',
+                                'apsExecution.submittedAt': new Date()
+                            }
+                        });
+                        console.log('Stored REAL APS identifiers in Family document:', family._id);
+                        console.log('  - Workitem ID:', familyCreatedRes.body.id);
+                        console.log('  - Bucket Key:', familyCreatedRes.body.bucketKey);
+                        console.log('  - Output Object Key:', familyCreatedRes.body.outputObjectKey);
+                    } else {
+                        console.warn('No family found to update with APS identifiers');
+                    }
+                } catch (persistErr) {
+                    console.warn('Failed to persist APS identifiers to Family:', persistErr.message);
+                }
                 
                 return {
                     success: true,
