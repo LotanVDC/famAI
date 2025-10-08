@@ -6,6 +6,7 @@
     <title>famAI - Register</title>
     <link rel="stylesheet" href="/css/famai.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" href="/logo.png" type="image/png">
     <style>
         .login-container {
             height: 100vh;
@@ -42,6 +43,16 @@
         .login-logo i {
             font-size: 1.75rem;
             color: var(--primary-color);
+        }
+
+        .login-subtitle .creator {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+            font-weight: 400;
+            font-style: italic;
+            opacity: 0.8;
+            display: block;
+            margin-top: 0.125rem;
         }
 
         .login-title {
@@ -146,10 +157,10 @@
         <div class="login-card">
             <div class="login-header">
                 <div class="login-logo">
-                    <i class="fas fa-cube"></i>
+                    <img src="/logo.png" alt="famAI Logo" class="logo-image">
                     <h1 class="login-title">fam<span class="ai-highlight">AI</span></h1>
                 </div>
-                <p>Create your account to start building AI-powered Revit families</p>
+                <p>Create your account to start building AI-powered Revit families<br><span class="creator">by Amir Lotan</span></p>
             </div>
 
             <div id="errorMessage" class="error-message"></div>

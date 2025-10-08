@@ -302,13 +302,13 @@ router.get('/status/:workitemId', async (req, res) => {
             
             let progress = 25;
             let status = 'pending';
-            let message = 'Family creation queued...';
+            let message = 'Your family is queued for cloud processing...';
             let estimatedTimeRemaining = '3-4 minutes';
             
             if (elapsedMinutes > 0.5) {
                 progress = 50;
                 status = 'inprogress';
-                message = 'Family is being created in the cloud...';
+                message = 'Crafting your family in the cloud...';
                 estimatedTimeRemaining = '2-3 minutes';
             }
             
@@ -322,7 +322,7 @@ router.get('/status/:workitemId', async (req, res) => {
             if (elapsedMinutes > 3) {
                 progress = 100;
                 status = 'success';
-                message = 'Family creation completed!';
+                message = 'Your family is ready! Fresh from the cloud!';
                 estimatedTimeRemaining = '0 minutes';
             }
             
@@ -375,7 +375,7 @@ router.get('/status/:workitemId', async (req, res) => {
             } else {
                 status = 'success';
                 progress = 100;
-                message = 'Family creation completed successfully';
+                message = 'Your family is ready! Fresh from the cloud!';
                 estimatedTimeRemaining = '0 seconds';
             }
             
@@ -704,8 +704,8 @@ function getMessageFromStatus(status) {
     switch (status) {
         case 'pending': return 'Workitem is queued for processing...';
         case 'inprogress': return 'Family is being created in Revit...';
-        case 'success': return 'Family creation completed successfully!';
-        case 'failed': return 'Family creation failed. Please try again.';
+        case 'success': return 'Your family is ready! Fresh from the cloud!';
+        case 'failed': return 'Oops! Something went wrong. Let\'s try again!';
         case 'cancelled': return 'Family creation was cancelled.';
         default: return 'Processing...';
     }
@@ -1091,6 +1091,50 @@ router.post('/v1/execute', async (req, res) => {
         
         console.log('APS Parameters:', apsParams);
 
+        // Check if this is a dry run
+        if (options.dryRun) {
+            console.log('DRY RUN MODE - Generating test payload without creating workitem');
+            
+            // Generate a mock workitem payload for testing
+            const mockWorkitem = {
+                activityId: 'test-activity-id',
+                arguments: {
+                    templateFile: {
+                        url: 'https://example.com/template.rft',
+                        Headers: {}
+                    },
+                    windowParams: {
+                        url: `data:application/json,${JSON.stringify(apsParams.WindowParams)}`,
+                        localName: 'WindowParams.json'
+                    },
+                    resultFamily: {
+                        verb: 'put',
+                        url: 'https://example.com/output.rfa'
+                    }
+                }
+            };
+
+            return res.json({
+                success: true,
+                dryRun: true,
+                apsParams: apsParams,
+                workitem: mockWorkitem,
+                meta: {
+                    dimensions: {
+                        feet: {
+                            width: apsParams.WindowParams.Types[0]?.WindowWidth,
+                            height: apsParams.WindowParams.Types[0]?.WindowHeight
+                        },
+                        millimeters: {
+                            width: (apsParams.WindowParams.Types[0]?.WindowWidth || 0) * 304.8,
+                            height: (apsParams.WindowParams.Types[0]?.WindowHeight || 0) * 304.8
+                        }
+                    },
+                    windowParamsJson: JSON.stringify(apsParams.WindowParams, null, 2)
+                }
+            });
+        }
+
         // Use the real APS family creation endpoint
         const apsResponse = await createFamilyWithAPS(apsParams, targetFolder, req.oauth_token);
         
@@ -1193,7 +1237,7 @@ router.get('/v1/status/:workitemId', async (req, res) => {
             } else {
                 status = 'success';
                 progress = 100;
-                message = 'Family creation completed successfully';
+                message = 'Your family is ready! Fresh from the cloud!';
                 estimatedTimeRemaining = '0 seconds';
             }
             
@@ -1661,8 +1705,47 @@ function convertSIRToAPSParams(sir) {
         
         // Extract materials
         const materials = sir.materials || [];
+        console.log('Available materials in SIR:', materials.map(m => m.name));
+        
         const glassPaneMaterial = materials.find(m => m.name.toLowerCase().includes('glass'))?.name || 'Default';
-        const sashMaterial = materials.find(m => m.name.toLowerCase().includes('sash') || m.name.toLowerCase().includes('frame'))?.name || 'Default';
+        console.log('Selected glass material:', glassPaneMaterial);
+        
+        // Look for frame/sash materials - check for metal, aluminum, steel, etc.
+        let sashMaterial = 'Default';
+        const frameMaterial = materials.find(m => {
+            const name = m.name.toLowerCase();
+            console.log(`Checking material: ${m.name} (${name})`);
+            return name.includes('sash') || name.includes('frame') || 
+                   name.includes('metal') || name.includes('metallic') || name.includes('metalic') || 
+                   name.includes('aluminum') || name.includes('steel') || name.includes('iron');
+        });
+        
+        if (frameMaterial) {
+            // Map generic material names to specific Revit material names
+            const materialName = frameMaterial.name.toLowerCase();
+            console.log(`Found frame material: ${frameMaterial.name}, mapping to Revit material...`);
+            
+            if (materialName.includes('metal') || materialName.includes('metallic') || materialName.includes('metalic') || materialName.includes('aluminum')) {
+                // Use "Metal" material that exists in the Revit template
+                sashMaterial = 'Metal';
+                console.log(`Mapped ${frameMaterial.name} to Metal (metallic material)`);
+            } else if (materialName.includes('steel') || materialName.includes('iron')) {
+                sashMaterial = 'Metal';
+                console.log(`Mapped ${frameMaterial.name} to Metal (steel/iron material)`);
+            } else if (materialName.includes('bronze')) {
+                sashMaterial = 'Metal';
+                console.log(`Mapped ${frameMaterial.name} to Metal (bronze material)`);
+            } else if (materialName.includes('wood') || materialName.includes('timber') || materialName.includes('wooden')) {
+                sashMaterial = 'Maple';
+                console.log(`Mapped ${frameMaterial.name} to Maple (wood material)`);
+            } else {
+                // Use the original name if it's already specific
+                sashMaterial = frameMaterial.name;
+                console.log(`Using original material name: ${frameMaterial.name}`);
+            }
+        } else {
+            console.log('No frame material found in SIR, using Default');
+        }
         
         // Extract parameters
         const familyParameters = sir.parameters.familyParameters || [];
@@ -2068,8 +2151,8 @@ function getMessageFromAPSStatus(status) {
     switch (status) {
         case 'pending': return 'Workitem is queued for processing...';
         case 'inprogress': return 'Family is being created in Revit...';
-        case 'success': return 'Family creation completed successfully!';
-        case 'failed': return 'Family creation failed. Please try again.';
+        case 'success': return 'Your family is ready! Fresh from the cloud!';
+        case 'failed': return 'Oops! Something went wrong. Let\'s try again!';
         case 'cancelled': return 'Family creation was cancelled.';
         default: return 'Processing...';
     }

@@ -6,7 +6,7 @@
     <title>famAI - AI-Powered Revit Family Creation</title>
     <link rel="stylesheet" href="/css/famai.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'></text></svg>">
+    <link rel="icon" href="/logo.png" type="image/png">
 </head>
 <body>
     <div class="app-container">
@@ -14,19 +14,42 @@
         <header class="app-header">
             <div class="header-content">
                 <div class="logo-section">
-                    <i class="fas fa-cube logo-icon"></i>
+                    <img src="/logo.png" alt="famAI Logo" class="logo-image">
                     <h1>fam<span class="ai-highlight">AI</span></h1>
-                    <span class="version">v1.0</span>
+                    <span class="version">v0.1.0-poc</span>
                 </div>
-                <div class="tagline">AI-Powered Revit Family Creation</div>
+                <div class="tagline">AI-Powered Revit Family Creator<br><span class="creator">by LotanVDC</span></div>
                 <div class="user-section">
-                    <div class="user-info">
-                        <i class="fas fa-user"></i>
-                        <span id="userName">Loading...</span>
+                    <div class="user-dropdown">
+                        <div class="user-trigger" onclick="toggleUserDropdown()">
+                            <i class="fas fa-user"></i>
+                            <span id="userName">Loading...</span>
+                            <i class="fas fa-chevron-down dropdown-arrow"></i>
+                        </div>
+                        <div class="user-dropdown-menu" id="userDropdownMenu">
+                            <div class="dropdown-item" onclick="viewProfile()">
+                                <i class="fas fa-user-circle"></i>
+                                <span>View Profile</span>
+                            </div>
+                            <div class="dropdown-item" onclick="openSettings()">
+                                <i class="fas fa-cog"></i>
+                                <span>Settings</span>
+                            </div>
+                            <div class="dropdown-item" onclick="viewHistory()">
+                                <i class="fas fa-history"></i>
+                                <span>Family History</span>
+                            </div>
+                            <div class="dropdown-item" onclick="exportData()">
+                                <i class="fas fa-download"></i>
+                                <span>Export Data</span>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <div class="dropdown-item logout-item" onclick="logout()">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>Logout</span>
+                            </div>
+                        </div>
                     </div>
-                    <button class="btn btn-outline" onclick="logout()">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
                 </div>
             </div>
         </header>
@@ -36,17 +59,12 @@
             <!-- Sidebar -->
             <aside class="sidebar">
                 <div class="sidebar-section">
-                    <h3><i class="fas fa-magic"></i> Quick Actions</h3>
-                    <button class="btn btn-primary btn-block" onclick="startNewFamily()">
-                        <i class="fas fa-plus"></i> New Family
-                    </button>
-                    <button class="btn btn-secondary btn-block" onclick="showExamples()">
-                        <i class="fas fa-lightbulb"></i> View Examples
-                    </button>
-                </div>
-
-                <div class="sidebar-section">
-                    <h3><i class="fas fa-cog"></i> APS Configuration</h3>
+                    <div class="section-header">
+                        <h3><i class="fas fa-cog"></i> Configuration</h3>
+                        <button class="btn btn-sm btn-outline reconfigure-btn" onclick="reconfigureAPS()" title="Reconfigure APS">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
                     <div class="config-section">
                         <div class="config-status" id="configStatus">
                             <span class="status-dot" id="statusIndicator"></span>
@@ -73,13 +91,6 @@
                             </div>
                             <div class="progress-text" id="configText">Initializing...</div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="sidebar-section">
-                    <h3><i class="fas fa-history"></i> Recent Sessions</h3>
-                    <div id="recentSessions" class="session-list">
-                        <!-- Recent sessions will be loaded here -->
                     </div>
                 </div>
 
@@ -118,7 +129,7 @@
                                 <i class="fas fa-sync-alt"></i> Refresh
                             </button>
                             <button type="button" class="btn btn-sm btn-primary" onclick="downloadSelected()" id="downloadModelBtn" disabled>
-                                <i class="fas fa-download"></i> Download Selected
+                                <i class="fas fa-download"></i> Download
                             </button>
                         </div>
                     </div>
@@ -171,20 +182,14 @@
                         <div class="input-wrapper">
                             <textarea 
                                 id="chatInput" 
-                                placeholder="💡 Describe your Revit family... (e.g., 'Create a 2400mm wide, 1200mm high double-hung window')"
-                                rows="3"
+                                placeholder="Describe your Revit family... (e.g., 'Create a 2400mm wide, 1200mm high double-hung window')"
+                                rows="2"
                                 onkeydown="handleKeyDown(event)"
                             ></textarea>
                             <button class="btn btn-primary send-btn" onclick="sendMessage()" id="sendButton">
                                 <i class="fas fa-paper-plane"></i>
                                 <span id="sendButtonText">Send</span>
                             </button>
-                        </div>
-                        <div class="input-hints">
-                            <span class="hint">
-                                <i class="fas fa-lightbulb"></i> 
-                                <strong>Tip:</strong> You can specify dimensions in mm, cm, feet, or inches
-                            </span>
                         </div>
                     </div>
                 </div>

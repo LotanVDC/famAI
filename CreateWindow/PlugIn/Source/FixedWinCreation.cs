@@ -282,6 +282,15 @@ namespace Autodesk.APS.RevitIO.CreateWindow
                 intFrame.Subcategory = m_frameCat;
                 sillFrame.Subcategory = m_frameCat;
             }
+            
+            //apply material to the frames (outer frame elements)
+            if (m_sashMatID > 0)
+            {
+                Autodesk.Revit.DB.ElementId frameMatId = new ElementId(m_sashMatID);
+                extFrame.get_Parameter(BuiltInParameter.MATERIAL_ID_PARAM).Set(frameMatId);
+                intFrame.get_Parameter(BuiltInParameter.MATERIAL_ID_PARAM).Set(frameMatId);
+                sillFrame.get_Parameter(BuiltInParameter.MATERIAL_ID_PARAM).Set(frameMatId);
+            }
             subTransaction.Commit();
         }
 

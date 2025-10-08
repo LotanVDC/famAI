@@ -6,7 +6,7 @@
   <title>famAI - AI-Powered Revit Family Creation</title>
     <link rel="stylesheet" href="/css/famai.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'></text></svg>">
+    <link rel="icon" href="/logo.png" type="image/png">
         <style>
         /* Login Page Specific Styles */
         .login-container {
@@ -56,13 +56,25 @@
             background: var(--surface-color);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-xl);
-            padding: 1.5rem;
+            padding: 2rem;
             width: 100%;
-            max-width: 400px;
+            max-width: 420px;
             box-shadow: var(--shadow-xl);
             position: relative;
             z-index: 2;
             backdrop-filter: blur(20px);
+            animation: slideInUp 0.6s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .login-header {
@@ -85,6 +97,13 @@
             animation: float 3s ease-in-out infinite;
         }
 
+        .login-logo .logo-image {
+            height: 3rem;
+            width: auto;
+            filter: drop-shadow(var(--glow-primary));
+            animation: float 3s ease-in-out infinite;
+        }
+
         .login-title {
             font-size: 1.5rem;
             font-weight: 800;
@@ -103,6 +122,17 @@
             color: var(--text-secondary);
             margin: 0.25rem 0 0 0;
             font-weight: 500;
+            line-height: 1.4;
+        }
+
+        .login-subtitle .creator {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+            font-weight: 400;
+            font-style: italic;
+            opacity: 0.8;
+            display: block;
+            margin-top: 0.125rem;
         }
 
         .login-description {
@@ -530,10 +560,10 @@
         <div class="login-card">
             <div class="login-header">
                 <div class="login-logo">
-                    <i class="fas fa-cube"></i>
+                    <img src="/logo.png" alt="famAI Logo" class="logo-image">
                           </div>
                 <h1 class="login-title">fam<span class="ai-highlight">AI</span></h1>
-                <p class="login-subtitle">AI-Powered Revit Family Creation</p>
+                <p class="login-subtitle">AI-Powered Revit Family Creator<br><span class="creator">by Amir Lotan</span></p>
                       </div>
 
             <p class="login-description">

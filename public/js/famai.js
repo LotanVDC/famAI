@@ -101,7 +101,7 @@ class BIMLLMInterface {
         
         this.socket.on('connect', () => {
             console.log('Connected to server');
-            this.updateStatus('ready', "famAI here — all set, let's build something!");
+            this.updateStatus('ready', "Ready to roll, fam? Let's build something.");
         });
 
         this.socket.on('disconnect', () => {
@@ -509,7 +509,7 @@ class BIMLLMInterface {
         } else if (result.workitemId) {
             response = `<div class="success-response">
                 <p><i class="fas fa-rocket"></i> <strong>Family Creation Started!</strong></p>
-                <p>Your ${result.sir.familyMetadata.category} family is being created in the cloud...</p>
+                <p>🚀 Your ${result.sir.familyMetadata.category} is being crafted in the cloud...</p>
                 <p><strong>Workitem ID:</strong> ${result.workitemId}</p>
             </div>`;
         }
@@ -676,12 +676,13 @@ class BIMLLMInterface {
             const result = await response.json();
 
             if (result.success) {
-                this.updateStatus('processing', 'Family creation in progress...');
+                this.updateStatus('processing', 'Crafting your family in the cloud...');
                 this.trackWorkitem(result.workitemId);
                 
                 this.addMessageToChat('assistant', 
-                    `Family creation started! Workitem ID: ${result.workitemId}. ` +
-                    `Estimated completion time: ${result.estimatedCompletionTime} seconds.`
+                    `Your family is being crafted in the cloud! ` +
+                    `It might take a minute or two. ` +
+                    `I'll let you know when it's ready!`
                 );
             } else {
                 throw new Error(result.error || 'Failed to execute family creation');
@@ -756,17 +757,17 @@ class BIMLLMInterface {
 
                 console.log('Status check result:', status);
                 this.updateProgress(status.progress || 0);
-                this.updateStatus('processing', status.message || 'Family creation in progress...');
+                this.updateStatus('processing', status.message || 'Crafting your family in the cloud...');
 
                 if (status.status === 'success') {
-                    this.updateStatus('ready', 'Family created successfully!');
-                    this.addMessageToChat('assistant', 
-                        `Family creation completed! 
-                        <div style=\"margin-top: 10px;\">
-                            <a href=\"/api/bim-llm/v1/download/${workitemId}\" target=\"_blank\" class=\"btn btn-primary\" style=\"margin-right: 10px;\">📥 Download RFA</a>
-                            <a href=\"/viewer?workitemId=${workitemId}\" target=\"_blank\" class=\"btn btn-secondary\">👁️ View in 3D</a>
-                        </div>`
-                    );
+                    this.updateStatus('ready', 'Family crafted successfully!');
+                this.addMessageToChat('assistant', 
+                    `🎉 Your family is ready! Fresh from the cloud and ready to use. 
+                    <div style=\"margin-top: 10px;\">
+                        <a href=\"/api/bim-llm/v1/download/${workitemId}\" target=\"_blank\" class=\"btn btn-primary\" style=\"margin-right: 10px;\">📥 Download RFA</a>
+                        <a href=\"/viewer?workitemId=${workitemId}\" target=\"_blank\" class=\"btn btn-secondary\">👁️ Preview</a>
+                    </div>`
+                );
                     this.hideProgress();
 
                     // Auto-refresh Available Models immediately and select the new item
@@ -1265,8 +1266,34 @@ class BIMLLMInterface {
             
         } catch (error) {
             console.error('Error initializing APS configuration:', error);
-            this.updateConfigurationStatus('error', 'Failed to initialize APS configuration');
+            this.updateConfigurationStatus('error', 'Failed to initialize Revit configuration');
         }
+    }
+
+    /**
+     * Extract Revit version from engine name
+     */
+    getRevitVersionFromEngine(engineId) {
+        if (!engineId) {
+            // Try to get the first available engine from the dropdown
+            const enginesSelect = document.getElementById('engines');
+            if (enginesSelect && enginesSelect.options.length > 1) {
+                const firstEngine = enginesSelect.options[1].value; // Skip "Select Engine..." option
+                if (firstEngine) {
+                    return this.getRevitVersionFromEngine(firstEngine);
+                }
+            }
+            return 'Revit 202x';
+        }
+        
+        // Extract year from engine ID (e.g., "Revit2023" -> "Revit 2023")
+        const match = engineId.match(/Revit(\d{4})/i);
+        if (match) {
+            return `Revit ${match[1]}`;
+        }
+        
+        // Fallback for other formats
+        return engineId.replace(/Revit/i, 'Revit ').trim() || 'Revit 202x';
     }
 
     /**
@@ -1306,6 +1333,15 @@ class BIMLLMInterface {
                     option.textContent = engineName;
                     enginesSelect.appendChild(option);
                 });
+                
+                // Auto-select the first engine and update configuration status
+                if (enginesSelect.options.length > 1) {
+                    enginesSelect.selectedIndex = 1; // Select first engine (skip "Select Engine...")
+                    // Trigger configuration status update with the selected engine
+                    setTimeout(() => {
+                        this.checkConfigurationStatus();
+                    }, 100);
+                }
             } else {
                 console.warn('No engines found or invalid response format');
                 const option = document.createElement('option');
@@ -1336,9 +1372,20 @@ class BIMLLMInterface {
             const activities = await response.json();
             console.log('Activities response:', activities);
             
+            // Get the selected engine to determine Revit version
+            const enginesSelect = document.getElementById('engines');
+            let selectedEngine = enginesSelect.value;
+            
+            // If no engine is selected, try to get the first available engine
+            if (!selectedEngine && enginesSelect.options.length > 1) {
+                selectedEngine = enginesSelect.options[1].value; // Skip the "Select Engine..." option
+            }
+            
+            const revitVersion = this.getRevitVersionFromEngine(selectedEngine);
+            
             // Check if activities is an array and has items
             if (!Array.isArray(activities) || activities.length === 0) {
-                this.updateConfigurationStatus('not_configured', 'APS needs to be configured');
+                this.updateConfigurationStatus('not_configured', `${revitVersion} needs to be configured`);
                 document.getElementById('configControls').style.display = 'block';
                 return;
             }
@@ -1363,11 +1410,14 @@ class BIMLLMInterface {
             });
             
             if (createWindowActivity) {
-                this.updateConfigurationStatus('configured', 'APS is configured and ready');
-                document.getElementById('configControls').style.display = 'none';
-                document.getElementById('clearAccount').style.display = 'block';
+                this.updateConfigurationStatus('configured', `${revitVersion} is configured`);
+                // Only hide config controls if not in reconfiguring mode
+                if (!this.isReconfiguring) {
+                    document.getElementById('configControls').style.display = 'none';
+                    document.getElementById('clearAccount').style.display = 'block';
+                }
             } else {
-                this.updateConfigurationStatus('not_configured', 'APS needs to be configured');
+                this.updateConfigurationStatus('not_configured', `${revitVersion} needs to be configured`);
                 document.getElementById('configControls').style.display = 'block';
             }
             
@@ -1389,6 +1439,11 @@ class BIMLLMInterface {
         // Clear configuration button
         document.getElementById('clearAccount').addEventListener('click', () => {
             this.clearConfiguration();
+        });
+        
+        // Engine selection change - update status with correct Revit version
+        document.getElementById('engines').addEventListener('change', () => {
+            this.checkConfigurationStatus();
         });
     }
 
@@ -1554,6 +1609,17 @@ class BIMLLMInterface {
                     configProgress.style.display = 'none';
                     createBtn.disabled = false;
                     clearBtn.disabled = false;
+                    // Clear the reconfiguring flag and refresh status
+                    if (window.bimLLMInterface) {
+                        window.bimLLMInterface.isReconfiguring = false;
+                        window.bimLLMInterface.checkConfigurationStatus();
+                    }
+                    // Reset reconfigure button to normal state
+                    const reconfigureBtn = document.querySelector('.reconfigure-btn');
+                    if (reconfigureBtn) {
+                        reconfigureBtn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+                        reconfigureBtn.title = 'Reconfigure APS';
+                    }
                 }, 3000);
                 break;
             case 'creating_failed':
@@ -1705,13 +1771,13 @@ class BIMLLMInterface {
         
         item.innerHTML = `
             <div class="model-header">
-                <div class="model-name">${model.familyName}</div>
+                <div class="model-name">${model.familyName || 'Window Family'}</div>
                 <div class="model-date">${createdDate} ${createdTime}</div>
             </div>
             <div class="model-meta">
                 <div class="model-dimensions">
-                    <span class="dimension-badge">W: ${model.dimensions.width}mm</span>
-                    <span class="dimension-badge">H: ${model.dimensions.height}mm</span>
+                    <span class="dimension-badge">W: ${Math.round(model.dimensions.width)}mm</span>
+                    <span class="dimension-badge">H: ${Math.round(model.dimensions.height)}mm</span>
                 </div>
                 <div class="model-file">${model.fileName}</div>
             </div>
@@ -2046,6 +2112,109 @@ function closeViewer() {
         window.bimLLMInterface.closeViewer();
     }
 }
+
+// Configuration Functions
+function reconfigureAPS() {
+    if (window.bimLLMInterface) {
+        const configControls = document.getElementById('configControls');
+        const reconfigureBtn = document.querySelector('.reconfigure-btn');
+        
+        if (configControls && configControls.style.display === 'block') {
+            // Close the configuration panel
+            configControls.style.display = 'none';
+            
+            // Change button back to reconfigure
+            reconfigureBtn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+            reconfigureBtn.title = 'Reconfigure APS';
+            
+            // Clear the reconfiguring flag
+            window.bimLLMInterface.isReconfiguring = false;
+            
+            // Refresh configuration status
+            window.bimLLMInterface.checkConfigurationStatus();
+            
+            showNotification('Configuration panel closed', 'info');
+        } else {
+            // Show the configuration controls
+            configControls.style.display = 'block';
+            
+            // Change button to close
+            reconfigureBtn.innerHTML = '<i class="fas fa-times"></i>';
+            reconfigureBtn.title = 'Close Configuration';
+            
+            // Hide the clear button to show we're in reconfigure mode
+            const clearBtn = document.getElementById('clearAccount');
+            if (clearBtn) {
+                clearBtn.style.display = 'none';
+            }
+            
+            // Set a flag to prevent auto-hiding of config controls
+            window.bimLLMInterface.isReconfiguring = true;
+            
+            // Load engines if not already loaded
+            window.bimLLMInterface.loadEngines();
+            
+            showNotification('Configuration panel opened. Select engine and bundle, then click "Configure APS"', 'info');
+        }
+    }
+}
+
+// User Dropdown Functions
+function toggleUserDropdown() {
+    const dropdown = document.getElementById('userDropdownMenu');
+    const trigger = document.querySelector('.user-trigger');
+    
+    if (dropdown.classList.contains('show')) {
+        dropdown.classList.remove('show');
+        trigger.classList.remove('active');
+    } else {
+        // Close any other open dropdowns
+        closeAllDropdowns();
+        dropdown.classList.add('show');
+        trigger.classList.add('active');
+    }
+}
+
+function closeAllDropdowns() {
+    const dropdowns = document.querySelectorAll('.user-dropdown-menu');
+    const triggers = document.querySelectorAll('.user-trigger');
+    
+    dropdowns.forEach(dropdown => dropdown.classList.remove('show'));
+    triggers.forEach(trigger => trigger.classList.remove('active'));
+}
+
+// User dropdown action functions
+function viewProfile() {
+    closeAllDropdowns();
+    showNotification('Profile view coming soon!', 'info');
+    // TODO: Implement profile view
+}
+
+function openSettings() {
+    closeAllDropdowns();
+    showNotification('Settings panel coming soon!', 'info');
+    // TODO: Implement settings panel
+}
+
+function viewHistory() {
+    closeAllDropdowns();
+    showNotification('Family history coming soon!', 'info');
+    // TODO: Implement family history view
+}
+
+function exportData() {
+    closeAllDropdowns();
+    showNotification('Data export coming soon!', 'info');
+    // TODO: Implement data export functionality
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.querySelector('.user-dropdown');
+    if (dropdown && !dropdown.contains(event.target)) {
+        closeAllDropdowns();
+    }
+});
 
 // Initialize the interface when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {

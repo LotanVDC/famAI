@@ -167,7 +167,7 @@ class BIMLLMService {
         }
         if (lowerPrompt.includes('wood') || lowerPrompt.includes('timber')) {
             sashMaterial = 'Wood';
-        } else if (lowerPrompt.includes('metal') || lowerPrompt.includes('steel') || lowerPrompt.includes('aluminum')) {
+        } else if (lowerPrompt.includes('metal') || lowerPrompt.includes('metallic') || lowerPrompt.includes('metalic') || lowerPrompt.includes('steel') || lowerPrompt.includes('aluminum')) {
             sashMaterial = 'Metal';
         }
         

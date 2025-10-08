@@ -1895,8 +1895,47 @@ function convertSIRToAPSParams(sir, originalPrompt = '') {
         
         // Extract materials
         const materials = sir.materials || [];
+        console.log('Available materials in SIR:', materials.map(m => m.name));
+        
         const glassPaneMaterial = materials.find(m => m.name.toLowerCase().includes('glass'))?.name || 'Default';
-        const sashMaterial = materials.find(m => m.name.toLowerCase().includes('sash') || m.name.toLowerCase().includes('frame'))?.name || 'Default';
+        console.log('Selected glass material:', glassPaneMaterial);
+        
+        // Look for frame/sash materials - check for metal, aluminum, steel, etc.
+        let sashMaterial = 'Default';
+        const frameMaterial = materials.find(m => {
+            const name = m.name.toLowerCase();
+            console.log(`Checking material: ${m.name} (${name})`);
+            return name.includes('sash') || name.includes('frame') || 
+                   name.includes('metal') || name.includes('metallic') || name.includes('metalic') || 
+                   name.includes('aluminum') || name.includes('steel') || name.includes('iron');
+        });
+        
+        if (frameMaterial) {
+            // Map generic material names to specific Revit material names
+            const materialName = frameMaterial.name.toLowerCase();
+            console.log(`Found frame material: ${frameMaterial.name}, mapping to Revit material...`);
+            
+            if (materialName.includes('metal') || materialName.includes('metallic') || materialName.includes('metalic') || materialName.includes('aluminum')) {
+                // Use "Metal" material that exists in the Revit template
+                sashMaterial = 'Metal';
+                console.log(`Mapped ${frameMaterial.name} to Metal (metallic material)`);
+            } else if (materialName.includes('steel') || materialName.includes('iron')) {
+                sashMaterial = 'Metal';
+                console.log(`Mapped ${frameMaterial.name} to Metal (steel/iron material)`);
+            } else if (materialName.includes('bronze')) {
+                sashMaterial = 'Metal';
+                console.log(`Mapped ${frameMaterial.name} to Metal (bronze material)`);
+            } else if (materialName.includes('wood') || materialName.includes('timber') || materialName.includes('wooden')) {
+                sashMaterial = 'Maple';
+                console.log(`Mapped ${frameMaterial.name} to Maple (wood material)`);
+            } else {
+                // Use the original name if it's already specific
+                sashMaterial = frameMaterial.name;
+                console.log(`Using original material name: ${frameMaterial.name}`);
+            }
+        } else {
+            console.log('No frame material found in SIR, using Default');
+        }
 
         // ---------- Unit parsing helpers (normalize to feet) ----------
         const prompt = (originalPrompt || '').toLowerCase();
